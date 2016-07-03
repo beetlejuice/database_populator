@@ -34,7 +34,8 @@ class Populator
   end
 
   def db
-    @db || SQLite3::Database.open(DB_PATH)
+    db_path = get_db_path
+    @db || SQLite3::Database.open(db_path)
   end
 
   def populate_data
@@ -51,6 +52,10 @@ class Populator
 
 
   private
+
+  def get_db_path
+    Dir.glob('*.sqlite').first
+  end
 
   def merge_configs *configs
     # TODO: implement
