@@ -95,13 +95,13 @@ data:
           ZISMODIFIED: 1
           ZISSYNCFAILED: 0
           ZCONTACT: '%{contact}' # TODO: sync it with Visit
+          ZCONTACTID: '%{contact_id}'
           ZPRODUCT: '%{product}' # TODO: sync it with VisitData
+          ZPRODUCTID: '%{product_id}'
           ZVISIT: '%{visit}'
+          ZVISITDATE: '%{visit_date}'
           ZLOYALTY: 5
           ZPOTENTIAL: 10
-          ZVISITDATE:
-          ZCONTACTID: '%{contact_id}'
-          ZPRODUCTID:
           ZSTATUS: Active
           ZUSERDIVISION: '%{user_division}'
           ZUSERID: '%{user_id}'
@@ -197,6 +197,22 @@ data:
     table: ZCONTACT
     columns_data:
       Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZISMODIFIED: 1
+      ZFIRSTNAME: '%{first_name}'
+      ZLASTNAME: '%{last_name}'
+      ZSPECIALTY: '%{specialty}'
+    related_objects:
+      - kind: references
+        operation: insert
+        table: ZREFERENCE
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISMODIFIED: 1
+          ZCONTACT: '%{contact}'
+          ZORGANIZATION: '%{organization}'
+          ZORGANIZATIONID: '%{organization_id}'
   - kind: organizations
     operation: insert
     table: ZORGANIZATION
@@ -208,11 +224,6 @@ data:
         table: ZORGANIZATIONADDITIONALINFO
         columns_data:
           Z_ENT: '%{z_ent}'
-  - kind: references
-    operation: insert
-    table: ZREFERENCE
-    columns_data:
-      Z_ENT: '%{z_ent}'
   - kind: sales
     operation: insert
     table:

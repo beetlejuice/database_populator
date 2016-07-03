@@ -14,6 +14,8 @@ VISITS_MONTHS_INTERVAL = 6
 DIFF_BETWEEN_UNIX_AND_IOS_TIME = 978307200
 THIRTY_MINUTES_IN_MILLISECONDS = 1800000
 
+MEDICAL_ORGANIZATION_RECORDTYPE_ID = '012D00000002XgpIAE'
+
 class Populator
 
   attr_accessor :db, :populate_data
@@ -34,8 +36,7 @@ class Populator
   end
 
   def db
-    db_path = get_db_path
-    @db || SQLite3::Database.open(db_path)
+    @db || SQLite3::Database.open(get_db_path)
   end
 
   def populate_data
@@ -120,14 +121,12 @@ class Populator
     @db.prepare blank_request
   end
 
-  def prepare_data_for_insert table, data_kind, data_template, records_number, parent_record_id = nil
+  def prepare_data_for_insert(table, data_kind, data_template, records_number, parent_record_id = nil)
     case data_kind
       when 'medical_visits'
         prepare_data_for_medical_visits table, data_template, records_number
       when 'pharmacy_visits'
         prepare_data_for_pharmacy_visits table, data_template, records_number
-      when 'joint_visits'
-        prepare_data_for_joint_visits table, data_template, records_number
       when 'medical_visit_data'
         prepare_data_for_medical_visit_data table, data_template, records_number, parent_record_id
       when 'pharmacy_visit_data'
@@ -139,59 +138,100 @@ class Populator
       when 'pathologies'
         prepare_data_for_pathologies
       when 'pharma_evaluations'
-        prepare_data_for_pharma_evaluations
+        prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
+      when 'contact'
+        prepare_data_for_contacts table, data_template, records_number
+      when 'references'
+        prepare_data_for_references table, data_template, records_number, parent_record_id
       else
         raise "No idea how to prepare data for: #{data_kind}"
     end
   end
 
-  def prepare_data_for_medical_visits table, template, records_number
+  def prepare_data_for_contacts(table, template, records_number)
     data_array = []
-
-    start_date_time = generate_random_time
-    end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
-    reference_data = get_reference
+    time_now = Time.now.strftime("%d-%m-%Y %R")
 
     records_number.times do |i|
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :medical_contact => reference_data['contact_id'],
-          :medical_organization => reference_data['organization_id'],
-          :medical_contact_id => reference_data['contact_sf_id'],
-          :medical_organization_id => reference_data['organization_sf_id'],
+          :first_name => "Contact-#{i}",
+          :last_name => "Generated #{time_now}",
+          :specialty => get_random_specialty
+      }
+    end
+  end
+
+  def get_random_specialty
+    @db.execute("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1").first
+  end
+
+  def prepare_data_for_references(table, template, records_number, contact_id)
+    data_array = []
+    medical_organization_data = get_random_medical_organization
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :contact => contact_id,
+          :organization => medical_organization_data[:id],
+          :id => medical_organization_data[:sf_id]
+      }
+    end
+  end
+
+  def get_random_medical_organization
+    organization_data = @db.execute("select z_pk, zentityid from zorganization where zrecordtypeid = #{MEDICAL_ORGANIZATION_RECORDTYPE_ID} order by random() limit 1").first
+    organization_id = organization_data[0]
+    organization_sf_id = organization_data[1]
+
+    {:id => organization_id, :sf_id => organization_sf_id}
+  end
+
+  def prepare_data_for_medical_visits(table, template, records_number)
+    data_array = []
+
+    start_date_time = generate_random_time
+    end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+    reference_data = get_random_reference
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :medical_contact => reference_data[:contact_idid],
+          :medical_organization => reference_data[:organization_id],
+          :medical_contact_id => reference_data[:contact_sf_id],
+          :medical_organization_id => reference_data[:organization_sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
           :status => generate_random_status,
-          :user_id => get_user_id
+          :user_id => get_user_data[:sf_id]
       }
     end
     data_array
   end
 
-  def prepare_data_for_pharmacy_visits table, template, records_number
+  def prepare_data_for_pharmacy_visits(table, template, records_number)
     data_array = []
     start_date_time = generate_random_time
     end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
-    pharmacy_organization_data = get_pharmacy_organization
+    pharmacy_organization_data = get_random_pharmacy_organization
 
-    records_number.times do |i|
+    records_number.times do
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :pharmacy_organization => pharmacy_organization_data['organization_id'],
-          :pharmacy_organization_id => pharmacy_organization_data['organization_sf_id'],
+          :pharmacy_organization => pharmacy_organization_data[:id],
+          :pharmacy_organization_id => pharmacy_organization_data[:sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
           :status => generate_random_status,
-          :user_id => get_user_id
+          :user_id => get_user_data[:sf_id]
       }
     end
     data_array
   end
 
-  def prepare_data_for_joint_visits table, template, records_number
-  end
-
-  def prepare_data_for_medical_visit_data table, template, records_number, parent_record_id
+  def prepare_data_for_medical_visit_data(table, template, records_number, parent_record_id)
     data_array = []
 
     records_number.times do |i|
@@ -205,7 +245,7 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_pharmacy_visit_data table, template, records_number, parent_record_id
+  def prepare_data_for_pharmacy_visit_data(table, template, records_number, parent_record_id)
     data_array = []
 
     records_number.times do |i|
@@ -218,22 +258,51 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_visit_participants table, template, records_number, parent_record_id
+  def prepare_data_for_visit_participants(table, template, records_number, parent_record_id)
     data_array = []
-    pharmacy_contact_data = get_pharmacy_contact
+    pharmacy_contact_data = get_random_pharmacy_contact
 
-    records_number.times do |i|
+    records_number.times do
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :contact => pharmacy_contact_data['contact_id'],
-          :contact_id => pharmacy_contact_data['contact_sf_id'],
+          :contact => pharmacy_contact_data[:id],
+          :contact_id => pharmacy_contact_data[:sf_id],
           :visit => parent_record_id
       }
     end
     data_array
   end
 
-  def get_z_ent zobject
+  def prepare_data_for_pharma_evaluations(table, template, records_number, parent_record_id)
+    data_array = []
+    user_data = get_user_data
+    visit_date =
+
+    records_number.times do |i|
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :contact => ,
+          :contact_id => ,
+          :product => ,
+          :product_id => ,
+          :visit => parent_record_id,
+          :visit_date => ,
+          :user_division => user_data[:division],
+          :user_id => user_data[:sf_id],
+          :user_name => user_data[:name]
+      }
+    end
+  end
+
+  def prepare_data_for_pathologies
+    # code here
+  end
+
+  def prepare_data_for_dymanic_visit_data
+    # code here
+  end
+
+  def get_z_ent(zobject)
     object_name = zobject[1..-1]
     $db.execute("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'").first
   end
@@ -250,43 +319,48 @@ class Populator
     convert_to_ios_time rand_time
   end
 
-  def convert_to_ios_time time
+  def convert_to_ios_time(time)
     time.to_i - DIFF_BETWEEN_UNIX_AND_IOS_TIME
   end
 
-  def get_reference
+  def get_random_reference
     reference_ids = @db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zspecialty = 'Терапевт') order by random() limit 1").first
     contact_id = reference_ids[0]
     organization_id = reference_ids[1]
     contact_sf_id = @db.execute("select zentityid from zcontact where z_pk = #{contact}")
     organization_sf_id = @db.execute("select zentityid from zorganization where z_pk = #{organization}")
 
-    {:contact => contact_id, :organization => organization_id,
+    {:contact_id => contact_id, :organization_id => organization_id,
      :contact_sf_id => contact_sf_id, :organization_sf_id => organization_sf_id}
   end
 
-  def get_pharmacy_organization
+  def get_random_pharmacy_organization
     organization_data = @db.execute("select z_pk, zentityid from zorganization where zsubtype = 'Аптека' order by random() limit 1").first
     organization_id = organization_data[0]
     organization_sf_id = organization_data[1]
 
-    {:organization => organization_id, :organization_sf_id => organization_sf_id}
+    {:id => organization_id, :sf_id => organization_sf_id}
   end
 
-  def get_user_id
-    @db.execute("select zentityid from zuser").first.to_s
+  def get_user_data
+    user_data = @db.execute("select zentityid, zname, zuserdivision from zuser").first
+    user_sf_id = user_data[0]
+    user_name = user_data[1]
+    user_division = user_data[2]
+
+    {:sf_id => user_sf_id, :name => user_name, :division => user_division}
   end
 
   def get_product
     @db.execute("select z_pk from zproduct order by random() limit 1").first.to_s
   end
 
-  def get_pharmacy_contact
+  def get_random_pharmacy_contact
     contact_data = @db.execute("select z_pk, zentityid from zcontact where zrecordtypeid = '012D00000002aMvIAI' order by random() limit 1").first
     contact_id = contact_data[0]
     contact_sf_id = contact_data[1]
 
-    {:contact_id => contact_id, :contact_sf_id => contact_sf_id}
+    {:id => contact_id, :sf_id => contact_sf_id}
   end
 end
 
