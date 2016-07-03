@@ -86,7 +86,7 @@ class Populator
     end
   end
 
-  def update_object(object, parent_id = nil)
+  def update_object(object, parent_id)
     records_number = object['number'].to_i
     table = object['table']
 
@@ -160,6 +160,8 @@ class Populator
           :specialty => get_random_specialty
       }
     end
+
+    data_array
   end
 
   def get_random_specialty
@@ -178,6 +180,8 @@ class Populator
           :id => medical_organization_data[:sf_id]
       }
     end
+
+    data_array
   end
 
   def get_random_medical_organization
@@ -198,14 +202,14 @@ class Populator
     records_number.times do
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :medical_contact => reference_data[:contact_idid],
+          :medical_contact => reference_data[:contact_id],
           :medical_organization => reference_data[:organization_id],
           :medical_contact_id => reference_data[:contact_sf_id],
           :medical_organization_id => reference_data[:organization_sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
           :status => generate_random_status,
-          :user_id => get_user_data[:sf_id]
+          :user_id => get_user[:sf_id]
       }
     end
     data_array
@@ -225,7 +229,7 @@ class Populator
           :date_start => start_date_time,
           :date_end => end_date_time,
           :status => generate_random_status,
-          :user_id => get_user_data[:sf_id]
+          :user_id => get_user[:sf_id]
       }
     end
     data_array
@@ -237,7 +241,7 @@ class Populator
     records_number.times do |i|
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :product => get_product,
+          :product => get_random_product[:id],
           :visit => parent_record_id,
           :detail_sequence => i
       }
@@ -251,7 +255,7 @@ class Populator
     records_number.times do |i|
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :product => get_product,
+          :product => get_random_product[:id],
           :visit => parent_record_id
       }
     end
@@ -275,23 +279,35 @@ class Populator
 
   def prepare_data_for_pharma_evaluations(table, template, records_number, parent_record_id)
     data_array = []
-    user_data = get_user_data
-    visit_date =
+    user_data = get_user
+    visit_data = get_visit_data parent_record_id
+    product_data = get_random_product
 
     records_number.times do |i|
       data_array << template % {
           :z_ent => get_z_ent(table),
-          :contact => ,
-          :contact_id => ,
-          :product => ,
-          :product_id => ,
+          :contact => visit_data[:contact_id],
+          :contact_id => visit_data[:contact_sf_id],
+          :product => product_data[:id],
+          :product_id => product_data[:sf_id],
           :visit => parent_record_id,
-          :visit_date => ,
+          :visit_date => visit_data[:date],
           :user_division => user_data[:division],
           :user_id => user_data[:sf_id],
           :user_name => user_data[:name]
       }
     end
+
+    data_array
+  end
+
+  def get_visit_data(parent_record_id)
+    visit_data = @db.execute("select ZDATETIME, ZCONTACT, ZCONTACTID").first
+    visit_date = visit_data[0]
+    contact_id = visit_data[1]
+    contact_sf_id = visit_data[2]
+
+    {:date => visit_date, :contact_id => contact_id, :contact_sf_id => contact_sf_id}
   end
 
   def prepare_data_for_pathologies
@@ -342,7 +358,7 @@ class Populator
     {:id => organization_id, :sf_id => organization_sf_id}
   end
 
-  def get_user_data
+  def get_user
     user_data = @db.execute("select zentityid, zname, zuserdivision from zuser").first
     user_sf_id = user_data[0]
     user_name = user_data[1]
@@ -351,8 +367,12 @@ class Populator
     {:sf_id => user_sf_id, :name => user_name, :division => user_division}
   end
 
-  def get_product
-    @db.execute("select z_pk from zproduct order by random() limit 1").first.to_s
+  def get_random_product
+    product_data = @db.execute("select z_pk, zentityid from zproduct order by random() limit 1").first
+    product_id = product_data[0]
+    product_sf_id = product_data[1]
+
+    {:id => product_id, :sf_id => product_sf_id}
   end
 
   def get_random_pharmacy_contact
