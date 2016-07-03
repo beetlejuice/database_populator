@@ -1,0 +1,13 @@
+data:
+  - kind: medical_visits
+    number: 1
+    related_objects:
+      - kind: medical_visit_data
+        number: 5
+  - kind: pharmacy_visits
+    number: 1
+    related_objects:
+      - kind: pharmacy_visits_data
+        number: 5
+      - kind: visit_participants
+        number: 4

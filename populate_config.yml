@@ -1,0 +1,225 @@
+vars:
+  perception_of_slides: &perception_of_slides Kreon_RussiaRecommendations_normal_scenario=1;Kreon_OptimumEfficiency_research_scenario=1;Kreon_DrugNumberOne_normal_scenario=1;Duspatalin_AdvantageSelectivityCell_normal_scenario=1;Duspatalin_EliminatesSpasm_normal_scenario=1;Duspatalin_Dosage_normal_scenario=1;Duphalac_ActAsLaxative_normal_scenario=1;Duphalac_RightChoice_research_scenario=1;Heptral_FrontPage_normal_scenario=1;Heptral_ImprovesLiverFunctionInPatientsWithVPH_normal_scenario=0;Kreon_Title_normal_product=1;Kreon_PatientsCount_normal_product=1;Kreon_ChoiseOfDrugs_normal_product=1;Kreon_SelectionCriteria_normal_product=1;Kreon_StagesOfChronicPancreatitis_normal_product=1;Kreon_CausesPancreaticInsufficiency_normal_product=1;Duphalac_Title_normal_product=1;Duphalac_PatientsCountMonth_normal_product=1;Duphalac_PatientsCount2_normal_product=1;Duphalac_SelectionCriteria_normal_product=1;Duphalac_PatientsCount_normal_product=1;Duphalac_CriterionChildren_normal_product=1;Duspatalin_Title_normal_product=1
+#  perception_of_slides: &perception_of_slides Kreon_RussiaRecommendations_normal_scenario=1
+  time_on_slides: &time_on_slides Kreon_RussiaRecommendations_normal_scenario=7;Kreon_OptimumEfficiency_research_scenario=7;Kreon_DrugNumberOne_normal_scenario=2;Duspatalin_AdvantageSelectivityCell_normal_scenario=2;Duspatalin_EliminatesSpasm_normal_scenario=1;Duspatalin_Dosage_normal_scenario=1;Duphalac_ActAsLaxative_normal_scenario=1;Duphalac_RightChoice_research_scenario=1;Heptral_FrontPage_normal_scenario=2;Heptral_ImprovesLiverFunctionInPatientsWithVPH_normal_scenario=7;Kreon_Title_normal_product=3;Kreon_PatientsCount_normal_product=6;Kreon_ChoiseOfDrugs_normal_product=4;Kreon_SelectionCriteria_normal_product=3;Kreon_StagesOfChronicPancreatitis_normal_product=2;Kreon_CausesPancreaticInsufficiency_normal_product=12;Duphalac_Title_normal_product=2;Duphalac_PatientsCountMonth_normal_product=16;Duphalac_PatientsCount2_normal_product=3;Duphalac_SelectionCriteria_normal_product=3;Duphalac_PatientsCount_normal_product=5;Duphalac_CriterionChildren_normal_product=6;Duspatalin_Title_normal_product=6
+#  time_on_slides: &time_on_slides Kreon_RussiaRecommendations_normal_scenario=7
+  marketing_cycle_id: &marketing_cycle_id a0ND000000Rn8BkMAJ
+  medical_visit_recordtype_id: &medical_visit_recordtype_id 012D00000002fwSIAQ
+  pharmacy_visit_recordtype_id: &pharmacy_visit_recordtype_id 012D00000002g3FIAQ
+  dynamic_kpi_json: &dynamic_kpi_json
+data:
+  - kind: medical_visits
+    operation: insert
+    table: ZVISIT
+    columns_data:
+      Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZALLDAY: 0
+      ZISADHOC: 0
+      ZISCALLFROMIPAD: 1
+      ZISIPADPRESENTATION: 1
+      ZISJOINT: 0
+      ZISLOCATIONSERVICEENABLED: 1
+      ZISMODIFIED: 1
+      ZNUMBEROFATTACHMENTS: 0
+      ZWASDELETED: 0
+      ZCONTACT: '%{medical_contact}'
+      ZORGANIZATION: '%{medical_organization}'
+      ZSPECIALTY: 1
+      ZCONTACTID: '%{medical_contact_id}'
+      ZORGANIZATIONID: '%{medical_organization_id}'
+      ZDATETIME: '%{date_start}'
+      ZENDDATETIME: '%{date_end}'
+      ZREALENDDATETIME: '%{date_end}'
+      ZREALSTARTDATETIME: '%{date_start}'
+      ZGPSPOINTDETECTIONDATE: '%{date_end}'
+      ZGPSPOINTOFCALL: 50.272271, 28.647414
+      ZMARKETINGCYCLEID: *marketing_cycle_id
+      ZRECORDTYPEID: *medical_visit_recordtype_id
+      ZSPECIALTYNAME: Терапевт
+      ZSCENARIONUMBER: 1
+      ZSTATUS: '%{status}'
+      ZTIMEONSLIDES: *time_on_slides
+      ZPERCEPTIONOFSLIDESBYDOCTOR: *perception_of_slides
+      ZVISITLOCATION: Стационар
+      ZUSERID: '%{user_id}'
+    related_objects:
+      - kind: medical_visit_data
+        operation: insert
+        table: ZVISITDATA
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 2
+          ZISMODIFIED: 1
+          ZWASDELETED: 0
+          ZPRODUCT: '%{product}'
+          ZVISIT: '%{visit}'
+          ZDETAILSEQUENCE: '%{detail_sequence}'
+          ZISFULLYDETAILED: 1
+          ZORDERNUMBER: 0
+          ZTARGETNUMBER: 0
+          ZTOTAL: 0
+      - kind: dymanic_visit_data
+        operation: insert
+        table: ZDYNAMICVISITDATA
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISMODIFIED: 1
+          ZISSYNCFAILED: 0
+          ZPRODUCT: '%{product}' # TODO: sync it with VisitData
+          ZVISIT: '%{visit}'
+          ZKPI: *dynamic_kpi_json
+      - kind: pathologies
+        operation: insert
+        table: ZPATHOLOGY
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISMODIFIED: 1
+          ZISSYNCFAILED: 0
+          ZCONTACT: '%{contact}' # TODO: sync it with Visit
+          ZPRODUCT: '%{product}' # TODO: sync it with VisitData
+          ZVISIT: '%{visit}'
+          ZPOTENTIAL: 20
+          ZNAME: Тестовая патология
+          ZSTATUS: Active
+          ZUSERDIVISION: '%{user_division}'
+          ZUSERID: '%{user_id}'
+      - kind: pharma_evaluations
+        operation: insert
+        table: ZPHARMAEVALUATION
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISMODIFIED: 1
+          ZISSYNCFAILED: 0
+          ZCONTACT: '%{contact}' # TODO: sync it with Visit
+          ZPRODUCT: '%{product}' # TODO: sync it with VisitData
+          ZVISIT: '%{visit}'
+          ZLOYALTY: 5
+          ZPOTENTIAL: 10
+          ZVISITDATE:
+          ZCONTACTID: '%{contact_id}'
+          ZPRODUCTID:
+          ZSTATUS: Active
+          ZUSERDIVISION: '%{user_division}'
+          ZUSERID: '%{user_id}'
+          ZUSERNAME: '%{user_name}'
+  - kind: pharmacy_visits
+    operation: insert
+    table: ZVISIT
+    columns_data:
+      Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZALLDAY: 0
+      ZHASATTACHMENTS: 0
+      ZISADHOC: 0
+      ZISCALLFROMIPAD: 1
+      ZISIPADPRESENTATION: 1
+      ZISJOINT: 0
+      ZISLOCATIONSERVICEENABLED: 1
+      ZISMODIFIED: 1
+      ZNUMBEROFATTACHMENTS: 0
+      ZWASDELETED: 0
+      ZORGANIZATION: '%{pharmacy_organization}'
+      ZSPECIALTY: 6
+      ZORGANIZATIONID: '%{pharmacy_organization_id}'
+      ZDATETIME: '%{date_start}'
+      ZENDDATETIME: '%{date_end}'
+      ZREALENDDATETIME: '%{date_end}'
+      ZREALSTARTDATETIME: '%{date_start}'
+      ZGPSPOINTDETECTIONDATE: '%{date_end}'
+      ZGPSPOINTOFCALL: 50.272271, 28.647414
+      ZMARKETINGCYCLEID: *marketing_cycle_id
+      ZRECORDTYPEID: *pharmacy_visit_recordtype_id
+      ZSPECIALTYNAME: Фармацевт (Провизор) аптеки B
+      ZSCENARIONUMBER: 1
+      ZSTATUS: '%{status}'
+      ZTIMEONSLIDES: *time_on_slides
+      ZPERCEPTIONOFSLIDESBYDOCTOR: *perception_of_slides
+      ZUSERID: '%{user_id}'
+    related_objects:
+      - kind: pharmacy_visit_data
+        operation: insert
+        table: ZVISITDATA
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISMODIFIED: 1
+          ZWASDELETED: 0
+          ZPRODUCT: '%{product}'
+          ZVISIT: '%{visit}'
+          ZDETAILSEQUENCE: 0
+          ZISFULLYDETAILED: 1
+          ZORDERNUMBER: 0
+          ZTARGETNUMBER: 0
+          ZTOTAL: 0
+      - kind: visit_participants
+        operation: insert
+        table: ZVISITPARTICIPANT
+        columns_data:
+          Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZISCANDIDATEFORPRESENTATION: 0
+          ZISMODIFIED: 1
+          ZCONTACT: '%{contact}'
+          ZVISIT: '%{visit}'
+          ZCONTACTID: '%{contact_id}'
+  - kind: application_events
+    operation: update
+    table: ZEVENT
+    columns_data:
+      Z_ENT: '%{z_ent}'
+    related_objects:
+      - kind: application_event_data
+        operation: insert
+        table: ZEVENTDATA
+        columns_data:
+          Z_ENT: '%{z_ent}'
+      - kind: application_event_participants
+        operation: insert
+        table: ZEVENTPARTICIPANT
+        columns_data:
+          Z_ENT: '%{z_ent}'
+  - kind: target_frequencies
+    operation: insert
+    table: ZTARGETFREQUENCY
+    columns_data:
+      Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZISMODIFIED: 1
+      ZCONTACT: '%{contact}'
+      ZMARKETINGCYCLE:
+      ZUSERID: '%{user_id}'
+  - kind: contacts
+    operation: insert
+    table: ZCONTACT
+    columns_data:
+      Z_ENT: '%{z_ent}'
+  - kind: organizations
+    operation: insert
+    table: ZORGANIZATION
+    columns_data:
+      Z_ENT: '%{z_ent}'
+    related_objects:
+      - kind: organization_additional_info
+        operation: insert
+        table: ZORGANIZATIONADDITIONALINFO
+        columns_data:
+          Z_ENT: '%{z_ent}'
+  - kind: references
+    operation: insert
+    table: ZREFERENCE
+    columns_data:
+      Z_ENT: '%{z_ent}'
+  - kind: sales
+    operation: insert
+    table:
+    columns_data:
+      Z_ENT: '%{z_ent}'
+  - kind: medical_info_requests
+    operation: insert
+    table:
+    columns_data:
+      Z_ENT: '%{z_ent}'
