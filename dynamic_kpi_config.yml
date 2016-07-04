@@ -1,0 +1,3 @@
+dynamic_kpi_product: Femoston
+dynamic_kpi_slide: femoston_femoston_whatDrugsPreferGynnecologist
+dynamic_kpi_json: '{"name":"Сгенерированный динамический KPI","id":"%{slide_id}","value":"1","product":"%{product}"}'

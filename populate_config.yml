@@ -6,7 +6,6 @@ vars:
   marketing_cycle_id: &marketing_cycle_id a0ND000000Rn8BkMAJ
   medical_visit_recordtype_id: &medical_visit_recordtype_id 012D00000002fwSIAQ
   pharmacy_visit_recordtype_id: &pharmacy_visit_recordtype_id 012D00000002g3FIAQ
-  dynamic_kpi_json: &dynamic_kpi_json
 data:
   - kind: medical_visits
     operation: insert
@@ -67,9 +66,9 @@ data:
           Z_OPT: 1
           ZISMODIFIED: 1
           ZISSYNCFAILED: 0
-          ZPRODUCT: '%{product}' # TODO: sync it with VisitData
+          ZPRODUCT: '%{dynamic_kpi_product}'
           ZVISIT: '%{visit}'
-          ZKPI: *dynamic_kpi_json
+          ZKPI: '%{dynamic_kpi_json}'
       - kind: pathologies
         operation: insert
         table: ZPATHOLOGY
@@ -78,7 +77,7 @@ data:
           Z_OPT: 1
           ZISMODIFIED: 1
           ZISSYNCFAILED: 0
-          ZCONTACT: '%{contact}' # TODO: sync it with Visit
+          ZCONTACT: '%{contact}'
           ZPRODUCT: '%{product}' # TODO: sync it with VisitData
           ZVISIT: '%{visit}'
           ZPOTENTIAL: 20
@@ -94,7 +93,7 @@ data:
           Z_OPT: 1
           ZISMODIFIED: 1
           ZISSYNCFAILED: 0
-          ZCONTACT: '%{contact}' # TODO: sync it with Visit
+          ZCONTACT: '%{contact}'
           ZCONTACTID: '%{contact_id}'
           ZPRODUCT: '%{product}' # TODO: sync it with VisitData
           ZPRODUCTID: '%{product_id}'
@@ -169,20 +168,18 @@ data:
   - kind: application_events
     operation: update
     table: ZEVENT
-    columns_data:
-      Z_ENT: '%{z_ent}'
     related_objects:
-      - kind: application_event_data
+      - kind: application_event_data # TODO: implement
         operation: insert
         table: ZEVENTDATA
         columns_data:
           Z_ENT: '%{z_ent}'
-      - kind: application_event_participants
+      - kind: application_event_participants # TODO: implement
         operation: insert
         table: ZEVENTPARTICIPANT
         columns_data:
           Z_ENT: '%{z_ent}'
-  - kind: target_frequencies
+  - kind: target_frequencies # TODO: implement
     operation: insert
     table: ZTARGETFREQUENCY
     columns_data:
@@ -213,23 +210,23 @@ data:
           ZCONTACT: '%{contact}'
           ZORGANIZATION: '%{organization}'
           ZORGANIZATIONID: '%{organization_id}'
-  - kind: organizations
+  - kind: organizations # TODO: implement
     operation: insert
     table: ZORGANIZATION
     columns_data:
       Z_ENT: '%{z_ent}'
     related_objects:
-      - kind: organization_additional_info
+      - kind: organization_additional_info # TODO: implement
         operation: insert
         table: ZORGANIZATIONADDITIONALINFO
         columns_data:
           Z_ENT: '%{z_ent}'
-  - kind: sales
+  - kind: sales # TODO: implement
     operation: insert
     table:
     columns_data:
       Z_ENT: '%{z_ent}'
-  - kind: medical_info_requests
+  - kind: medical_info_requests # TODO: implement
     operation: insert
     table:
     columns_data:

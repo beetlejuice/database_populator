@@ -4,8 +4,7 @@ require 'date'
 
 POPULATE_CONFIG_FILEPATH = './populate_config.yml'
 NUMBER_CONFIG_FILEPATH = './populate_number.yml'
-
-DB_PATH = ''
+DYNAMIC_KPI_CONFIG_FILEPATH = './dynamic_kpi_config.yml'
 
 INSERT_TEMPLATE = "insert into %s (%s) values (%s)" # 'insert into @table, ([@columns]) values (?,?,?)'
 UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s)"
@@ -51,11 +50,10 @@ class Populator
     end
   end
 
-
   private
 
   def get_db_path
-    Dir.glob('*.sqlite').first
+    Dir.glob('*.sqlite').first # Get DB filepath from current folder
   end
 
   def merge_configs *configs
@@ -86,7 +84,7 @@ class Populator
     end
   end
 
-  def update_object(object, parent_id)
+  def update_object(object)
     records_number = object['number'].to_i
     table = object['table']
 
@@ -134,15 +132,16 @@ class Populator
       when 'visit_participants'
         prepare_data_for_visit_participants table, data_template, records_number, parent_record_id
       when 'dymanic_visit_data'
-        prepare_data_for_dymanic_visit_data
+        prepare_data_for_dymanic_visit_data table, data_template, records_number, parent_record_id
       when 'pathologies'
-        prepare_data_for_pathologies
+        prepare_data_for_pathologies table, data_template, records_number, parent_record_id
       when 'pharma_evaluations'
         prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
       when 'contact'
         prepare_data_for_contacts table, data_template, records_number
       when 'references'
         prepare_data_for_references table, data_template, records_number, parent_record_id
+      when ''
       else
         raise "No idea how to prepare data for: #{data_kind}"
     end
@@ -160,7 +159,6 @@ class Populator
           :specialty => get_random_specialty
       }
     end
-
     data_array
   end
 
@@ -180,7 +178,6 @@ class Populator
           :id => medical_organization_data[:sf_id]
       }
     end
-
     data_array
   end
 
@@ -283,7 +280,7 @@ class Populator
     visit_data = get_visit_data parent_record_id
     product_data = get_random_product
 
-    records_number.times do |i|
+    records_number.times do
       data_array << template % {
           :z_ent => get_z_ent(table),
           :contact => visit_data[:contact_id],
@@ -297,12 +294,11 @@ class Populator
           :user_name => user_data[:name]
       }
     end
-
     data_array
   end
 
   def get_visit_data(parent_record_id)
-    visit_data = @db.execute("select ZDATETIME, ZCONTACT, ZCONTACTID").first
+    visit_data = @db.execute("select ZDATETIME, ZCONTACT, ZCONTACTID from ZVISIT where Z_PK = #{parent_record_id}").first
     visit_date = visit_data[0]
     contact_id = visit_data[1]
     contact_sf_id = visit_data[2]
@@ -310,12 +306,49 @@ class Populator
     {:date => visit_date, :contact_id => contact_id, :contact_sf_id => contact_sf_id}
   end
 
-  def prepare_data_for_pathologies
-    # code here
+  def prepare_data_for_pathologies(table, template, records_number, parent_record_id)
+    data_array = []
+    user_data = get_user
+    visit_data = get_visit_data parent_record_id
+    product_data = get_random_product
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :contact => visit_data[:contact_id],
+          :product => product_data[:id],
+          :visit => parent_record_id,
+          :user_division => user_data[:division],
+          :user_id => user_data[:sf_id]
+      }
+    end
+    data_array
   end
 
-  def prepare_data_for_dymanic_visit_data
-    # code here
+  def prepare_data_for_dymanic_visit_data(table, template, records_number, parent_record_id)
+    data_array = []
+    dynamic_visit_data = get_dynamic_visit_data_config
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :product => dynamic_visit_data[:product],
+          :visit => parent_record_id,
+          :json => dynamic_visit_data[:json]
+      }
+    end
+    data_array
+  end
+
+  def get_dynamic_visit_data_config
+    config = YAML::load DYNAMIC_KPI_CONFIG_FILEPATH
+    product = config['dynamic_kpi_product']
+    json = config['dynamic_kpi_json'] % {
+      :slide_id => config['dynamic_kpi_slide'],
+      :product => product
+    }
+
+    {:product => product, :json => json}
   end
 
   def get_z_ent(zobject)
@@ -384,14 +417,8 @@ class Populator
   end
 end
 
-# def get_medrep_target
-#   rm_id = get_rm
-#   $db.execute("select zentityid from ztarget where zuserid != #{rm_id} order by random() limit 1").first
-# end
-#
 # def fix_coredata # call after all modifications
 #   # set z_max for all objects
 # end
 
 Populator.new.populate
-
