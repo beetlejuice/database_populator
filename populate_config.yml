@@ -189,7 +189,7 @@ data:
           ZISMODIFIED: 1
           ZCONTACT: '%{contact}'
           ZEVENT: '%{event}'
-  - kind: target_frequencies # TODO: implement
+  - kind: target_frequencies
     operation: insert
     table: ZTARGETFREQUENCY
     columns_data:
@@ -224,17 +224,47 @@ data:
           ZCONTACT: '%{contact}'
           ZORGANIZATION: '%{organization}'
           ZORGANIZATIONID: '%{organization_id}'
-  - kind: organizations # TODO: implement
+  - kind: organizations
     operation: insert
     table: ZORGANIZATION
     columns_data:
       Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZISMODIFIED: 1
+      ZISFOLLOWINGMERCHSTANDARDS: 0
+      ZISSYNCFAILED: 0
+      ZWASDELETED: 0
+      ZBILLINGCITY: '%{brick_city}'
+      ZBILLINGSTREET: Адрес
+      ZBRICKID: '%{brick_id}'
+      ZNAME: '%{name}'
+      ZPHARMACYTYPE: Индивидуальная
+      ZRECORDTYPEID: '%{recordtype_id}'
+      ZSUBTYPE: '%{subtype}'
     related_objects:
-      - kind: organization_additional_info # TODO: implement
+      - kind: organization_additional_info
         operation: insert
         table: ZORGANIZATIONADDITIONALINFO
         columns_data:
           Z_ENT: '%{z_ent}'
+          Z_OPT: 1
+          ZEVENTLIMITS: 0
+          ZISMODIFIED: 1
+          ZISSYNCFAILED: 0
+          ZNEARSUBWAY: 1
+          ZSTOCKSMANAGEMENT: 0
+          ZVISITLIMITS: 0
+          ZORGANIZATION: '%{organization}'
+          ZAVARAGECHECK: 200.0
+          ZCASHREGISTERS: 2.0
+          ZDAILYCUSTOMERS: 100.0
+          ZFIRSTLINEPHARMACISTS: 1.0
+          ZMONTHLYSALES: 400000.0
+          ZPRODUCTSTURNOVER: 100000.0
+          ZMONTHLYTURNOVER: 1 - 500000
+          ZPHARMACYLAYOUTTYPE: Открытая
+          ZPHARMACYLOCATION: Отдельностоящая
+          ZPHARMACYSCHEDULE: 24/7
   - kind: sales # TODO: implement
     operation: insert
     table:

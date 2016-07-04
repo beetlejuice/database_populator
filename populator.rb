@@ -15,6 +15,7 @@ THIRTY_MINUTES_IN_MILLISECONDS = 1800000
 
 MEDICAL_ORGANIZATION_RECORDTYPE_ID = '012D00000002XgpIAE'
 MEDICAL_CONTACT_RECORDTYPE_ID = '012D00000002Xh4IAE'
+PHARMACY_ORGANIZATION_RECORDTYPE_ID = '012D00000002XguIAE'
 PHARMACY_CONTACT_RECORDTYPE_ID = '012D00000002aMvIAI'
 
 class Populator
@@ -145,12 +146,58 @@ class Populator
       prepare_data_for_event_participants table, data_template, records_number, parent_record_id
     when 'target_frequencies'
       prepare_data_for_target_frequencies table, data_template, records_number
+    when 'organizations'
+      prepare_data_for_organizations table, data_template, records_number
+    when 'organization_additional_info'
+      prepare_data_for_organization_additional_info table, data_template, records_number, parent_record_id
     else
       raise "No idea how to prepare data for: #{data_kind}"
     end
   end
 
-  def prepare_data_for_target_frequencies(table, data_template, records_number)
+  def prepare_data_for_organization_additional_info(table, template, records_number, parent_record_id)
+    data_array = []
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :organization => parent_record_id
+      }
+    end
+    data_array
+  end
+
+  def prepare_data_for_organizations(table, template, records_number)
+    data_array = []
+    time_now = Time.now.strftime("%d-%m-%Y %R")
+    brick_data = get_random_brick
+
+    records_number.times do |i|
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :brick_city => brick_data[:name],
+          :brick_id => brick_data[:sf_id],
+          :name => "Generated #{time_now} organization-#{i}",
+          :recordtype_id => PHARMACY_ORGANIZATION_RECORDTYPE_ID,
+          :subtype => get_random_subtype_from_recordtype PHARMACY_ORGANIZATION_RECORDTYPE_ID
+      }
+    end
+    data_array
+  end
+
+  def get_random_brick
+    brick_data = @db.execute "select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1"
+    brick_name = brick_data[0]
+    brick_sf_id = brick[1]
+
+    {:name => brick_name, :sf_id => brick_sf_id}
+  end
+
+  def get_random_subtype_from_recordtype(recordtype)
+    @db.execute("select zvalue from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZENTITYID = '012D00000002XguIAE' limit 1) order by random() limit 1")
+  end
+
+  def prepare_data_for_target_frequencies(table, template, records_number)
     data_array = []
     user_data = get_user
     contact_data = get_random_medical_contact
@@ -178,7 +225,7 @@ class Populator
     target_data[0]
   end
 
-  def prepare_data_for_event_data(table, data_template, records_number, parent_record_id)
+  def prepare_data_for_event_data(table, template, records_number, parent_record_id)
     data_array = []
     product_data = get_random_product
 
@@ -499,7 +546,6 @@ class Populator
   def get_random_pharmacy_contact
     get_random_contact :pharmacy
   end
-
 end
 
 # def fix_coredata # call after all modifications
