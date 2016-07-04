@@ -14,6 +14,8 @@ DIFF_BETWEEN_UNIX_AND_IOS_TIME = 978307200
 THIRTY_MINUTES_IN_MILLISECONDS = 1800000
 
 MEDICAL_ORGANIZATION_RECORDTYPE_ID = '012D00000002XgpIAE'
+MEDICAL_CONTACT_RECORDTYPE_ID = '012D00000002Xh4IAE'
+PHARMACY_CONTACT_RECORDTYPE_ID = '012D00000002aMvIAI'
 
 class Populator
 
@@ -117,30 +119,91 @@ class Populator
 
   def prepare_data_for_insert(table, data_kind, data_template, records_number, parent_record_id = nil)
     case data_kind
-      when 'medical_visits'
-        prepare_data_for_medical_visits table, data_template, records_number
-      when 'pharmacy_visits'
-        prepare_data_for_pharmacy_visits table, data_template, records_number
-      when 'medical_visit_data'
-        prepare_data_for_medical_visit_data table, data_template, records_number, parent_record_id
-      when 'pharmacy_visit_data'
-        prepare_data_for_pharmacy_visit_data table, data_template, records_number, parent_record_id
-      when 'visit_participants'
-        prepare_data_for_visit_participants table, data_template, records_number, parent_record_id
-      when 'dymanic_visit_data'
-        prepare_data_for_dymanic_visit_data table, data_template, records_number, parent_record_id
-      when 'pathologies'
-        prepare_data_for_pathologies table, data_template, records_number, parent_record_id
-      when 'pharma_evaluations'
-        prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
-      when 'contact'
-        prepare_data_for_contacts table, data_template, records_number
-      when 'references'
-        prepare_data_for_references table, data_template, records_number, parent_record_id
-      when ''
-      else
-        raise "No idea how to prepare data for: #{data_kind}"
+    when 'medical_visits'
+      prepare_data_for_medical_visits table, data_template, records_number
+    when 'pharmacy_visits'
+      prepare_data_for_pharmacy_visits table, data_template, records_number
+    when 'medical_visit_data'
+      prepare_data_for_medical_visit_data table, data_template, records_number, parent_record_id
+    when 'pharmacy_visit_data'
+      prepare_data_for_pharmacy_visit_data table, data_template, records_number, parent_record_id
+    when 'visit_participants'
+      prepare_data_for_visit_participants table, data_template, records_number, parent_record_id
+    when 'dymanic_visit_data'
+      prepare_data_for_dymanic_visit_data table, data_template, records_number, parent_record_id
+    when 'pathologies'
+      prepare_data_for_pathologies table, data_template, records_number, parent_record_id
+    when 'pharma_evaluations'
+      prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
+    when 'contact'
+      prepare_data_for_contacts table, data_template, records_number
+    when 'references'
+      prepare_data_for_references table, data_template, records_number, parent_record_id
+    when 'application_event_data'
+      prepare_data_for_event_data table, data_template, records_number, parent_record_id
+    when 'application_event_participants'
+      prepare_data_for_event_participants table, data_template, records_number, parent_record_id
+    when 'target_frequencies'
+      prepare_data_for_target_frequencies table, data_template, records_number
+    else
+      raise "No idea how to prepare data for: #{data_kind}"
     end
+  end
+
+  def prepare_data_for_target_frequencies(table, data_template, records_number)
+    data_array = []
+    user_data = get_user
+    contact_data = get_random_medical_contact
+    marketing_cycle_data = get_active_marketing_cycle
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :contact => contact_data[:id],
+          :marketing_cycle => marketing_cycle_data[id],
+          :target_category => get_random_target_category_for_contact,
+          :target_id => get_target_id,
+          :user_id => user_data[:sf_id]
+      }
+    end
+    data_array
+  end
+
+  def get_random_target_category_for_contact
+    @db.execute("select zvalue from ztargetcategory where ZTYPE = 'ContactTargetCategory' order by random() limit 1").first
+  end
+
+  def get_target_id
+    target_data = @db.execute("select zentityid from ztarget").first # TODO: check if this will work for RM
+    target_data[0]
+  end
+
+  def prepare_data_for_event_data(table, data_template, records_number, parent_record_id)
+    data_array = []
+    product_data = get_random_product
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :event => parent_record_id,
+          :product => product_data[:id]
+      }
+    end
+    data_array
+  end
+
+  def prepare_data_for_event_participants(table, template, records_number, parent_record_id)
+    data_array = []
+    contact_data = get_random_contact
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :contact => contact_data[:id],
+          :event => parent_record_id
+      }
+    end
+    data_array
   end
 
   def prepare_data_for_contacts(table, template, records_number)
@@ -187,9 +250,9 @@ class Populator
 
   def prepare_data_for_medical_visits(table, template, records_number)
     data_array = []
-
     start_date_time = generate_random_time
     end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+    marketing_cycle_data = get_active_marketing_cycle
     reference_data = get_random_reference
 
     records_number.times do
@@ -201,6 +264,7 @@ class Populator
           :medical_organization_id => reference_data[:organization_sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
+          :marketing_cycle => marketing_cycle_data[:sf_id],
           :status => generate_random_status,
           :user_id => get_user[:sf_id]
       }
@@ -212,6 +276,7 @@ class Populator
     data_array = []
     start_date_time = generate_random_time
     end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+    marketing_cycle_data = get_active_marketing_cycle
     pharmacy_organization_data = get_random_pharmacy_organization
 
     records_number.times do
@@ -221,11 +286,20 @@ class Populator
           :pharmacy_organization_id => pharmacy_organization_data[:sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
+          :marketing_cycle => marketing_cycle_data[:sf_id],
           :status => generate_random_status,
           :user_id => get_user[:sf_id]
       }
     end
     data_array
+  end
+
+  def get_active_marketing_cycle
+    marketing_cycle_data = @db.execute("select z_pk, zentityid from zmarketingcycle where zisactive = 1").first
+    id = marketing_cycle_data[0]
+    sf_id = marketing_cycle_data[1]
+
+    {:id => id, :sf_id => sf_id}
   end
 
   def prepare_data_for_medical_visit_data(table, template, records_number, parent_record_id)
@@ -404,13 +478,28 @@ class Populator
     {:id => product_id, :sf_id => product_sf_id}
   end
 
-  def get_random_pharmacy_contact
-    contact_data = @db.execute("select z_pk, zentityid from zcontact where zrecordtypeid = '012D00000002aMvIAI' order by random() limit 1").first
+  def get_random_contact(type = nil) # TODO: implement
+    recordtype = case type
+                 when :medical then MEDICAL_CONTACT_RECORDTYPE_ID
+                 when :pharmacy then PHARMACY_CONTACT_RECORDTYPE_ID
+                 else %w(MEDICAL_CONTACT_RECORDTYPE_ID PHARMACY_CONTACT_RECORDTYPE_ID).pick
+                 end
+
+    contact_data = @db.execute("select z_pk, zentityid from zcontact where zrecordtypeid = '#{recordtype}' order by random() limit 1").first
     contact_id = contact_data[0]
     contact_sf_id = contact_data[1]
 
     {:id => contact_id, :sf_id => contact_sf_id}
   end
+
+  def get_random_medical_contact
+    get_random_contact :medical
+  end
+
+  def get_random_pharmacy_contact
+    get_random_contact :pharmacy
+  end
+
 end
 
 # def fix_coredata # call after all modifications
