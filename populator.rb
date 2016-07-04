@@ -19,6 +19,10 @@ class Populator
 
   attr_accessor :db, :populate_data
 
+  def initialize(db)
+    @db = db
+  end
+
   def populate
     populate_data.each do |object|
       if object['number'].to_i > 0
@@ -34,10 +38,6 @@ class Populator
     end
   end
 
-  def db
-    @db || SQLite3::Database.open(get_db_path)
-  end
-
   def populate_data
     if @populate_data.nil?
       populate_config = YAML::load_file POPULATE_CONFIG_FILEPATH
@@ -51,10 +51,6 @@ class Populator
   end
 
   private
-
-  def get_db_path
-    Dir.glob('*.sqlite').first # Get DB filepath from current folder
-  end
 
   def merge_configs *configs
     # TODO: implement
@@ -420,5 +416,3 @@ end
 # def fix_coredata # call after all modifications
 #   # set z_max for all objects
 # end
-
-Populator.new.populate
