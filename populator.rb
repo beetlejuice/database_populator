@@ -102,6 +102,8 @@ class Populator
   end
 
   def get_random_record_ids(table, quantity)
+    existing_records_count = get_records_count table
+    quantity = (quantity <= existing_records_count) ? quantity : existing_records_count
     @db.execute "select Z_PK from #{table} order by random() limit #{quantity}"
   end
 
@@ -574,7 +576,7 @@ class Populator
     {:id => product_id, :sf_id => product_sf_id}
   end
 
-  def get_random_contact(type = nil) # TODO: implement
+  def get_random_contact(type = nil)
     recordtype = case type
                  when :medical then MEDICAL_CONTACT_RECORDTYPE_ID
                  when :pharmacy then PHARMACY_CONTACT_RECORDTYPE_ID
@@ -594,6 +596,10 @@ class Populator
 
   def get_random_pharmacy_contact
     get_random_contact :pharmacy
+  end
+
+  def get_records_count(table)
+    db.execute("select count() from #{table}").first.to_i
   end
 end
 

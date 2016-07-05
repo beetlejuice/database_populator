@@ -3,7 +3,6 @@ vars:
 #  perception_of_slides: &perception_of_slides Kreon_RussiaRecommendations_normal_scenario=1
   time_on_slides: &time_on_slides Kreon_RussiaRecommendations_normal_scenario=7;Kreon_OptimumEfficiency_research_scenario=7;Kreon_DrugNumberOne_normal_scenario=2;Duspatalin_AdvantageSelectivityCell_normal_scenario=2;Duspatalin_EliminatesSpasm_normal_scenario=1;Duspatalin_Dosage_normal_scenario=1;Duphalac_ActAsLaxative_normal_scenario=1;Duphalac_RightChoice_research_scenario=1;Heptral_FrontPage_normal_scenario=2;Heptral_ImprovesLiverFunctionInPatientsWithVPH_normal_scenario=7;Kreon_Title_normal_product=3;Kreon_PatientsCount_normal_product=6;Kreon_ChoiseOfDrugs_normal_product=4;Kreon_SelectionCriteria_normal_product=3;Kreon_StagesOfChronicPancreatitis_normal_product=2;Kreon_CausesPancreaticInsufficiency_normal_product=12;Duphalac_Title_normal_product=2;Duphalac_PatientsCountMonth_normal_product=16;Duphalac_PatientsCount2_normal_product=3;Duphalac_SelectionCriteria_normal_product=3;Duphalac_PatientsCount_normal_product=5;Duphalac_CriterionChildren_normal_product=6;Duspatalin_Title_normal_product=6
 #  time_on_slides: &time_on_slides Kreon_RussiaRecommendations_normal_scenario=7
-#  marketing_cycle_id: &marketing_cycle_id a0ND000000Rn8BkMAJ
   medical_visit_recordtype_id: &medical_visit_recordtype_id 012D00000002fwSIAQ
   pharmacy_visit_recordtype_id: &pharmacy_visit_recordtype_id 012D00000002g3FIAQ
 data:
@@ -281,7 +280,7 @@ data:
       ZSALESOUT: 10
       ZSOURCE: Manual
       ZTYPE: Fact
-  - kind: medical_info_requests # TODO: implement
+  - kind: medical_info_requests
     operation: insert
     table:
     columns_data:
