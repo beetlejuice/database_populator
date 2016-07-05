@@ -30,12 +30,12 @@ class Populator
     populate_data.each do |object|
       if object['number'].to_i > 0
         case object['operation']
-          when 'insert'
-            insert_object object
-          when 'update'
-            update_object object
-          else
-            p "No operation set for object kind: #{object[kind]}!"
+        when 'insert'
+          insert_entities object
+        when 'update'
+          update_entities object
+        else
+          p "No operation set for object kind: #{object[kind]}!"
         end
       end
     end
@@ -60,30 +60,43 @@ class Populator
     # result_hash['data']
   end
 
-  def insert_object(object, parent_id = nil)
-    records_number = object['number'].to_i
+
+  def insert_entities(object)
+    rows_number = object['number'].to_i
     table = object['table']
     columns = object['columns_data'].keys
     data_kind = object['kind']
     data_template = object['columns_data'].values
+    parent_id = object['parent_id']
+    related_objects = object['related_objects']
 
-    request = prepare_blank_insert_request table, columns
-    records_data = prepare_data_for_insert table, data_kind, data_template, records_number, parent_id
+    entities_ids = get_new_ids_for_table(table, rows_number)
+    entities_values = prepare_data_for_insert table, data_kind, data_template, entities_ids, parent_id
 
-    records_data.each do |record_data|
-      request.execute *record_data
+    db_query = bulk_insert_query(table, columns, entities_values)
+    db.execute db_query
 
-      related_objects = object['related_objects']
-      unless related_objects.nil?
-        parent_id = @db.last_insert_row_id
+    unless related_objects.nil?
+      entities_ids.each do |id|
         related_objects.each do |related_object|
-          insert_object related_object, parent_id
+          related_object['parent_id'] = id
+          insert_entities related_object
         end
       end
     end
   end
 
-  def update_object(object)
+  def get_new_ids_for_table(table, quantity)
+    last_id = get_table_last_id(table)
+    quantity.times.map{ |i| last_id + i + 1 }
+  end
+
+  def get_table_last_id(table)
+    db.execute "SELECT z_id FROM #{ table } LIMIT 1"
+  end
+
+
+  def update_entities(object)
     records_number = object['number'].to_i
     table = object['table']
 
@@ -95,7 +108,8 @@ class Populator
     unless related_objects.nil?
       related_objects.each do |related_object|
         ids.each do |id|
-          insert_object related_object, id
+          related_object['parent_id'] = id
+          insert_entities related_object
         end
       end
     end
@@ -104,6 +118,23 @@ class Populator
   def get_random_record_ids(table, quantity)
     @db.execute "select Z_PK from #{table} order by random() limit #{quantity}"
   end
+
+
+  def bulk_insert_query(table, columns, entities_values)
+    first_entity = entities_values.first
+
+    values_as_columns = columns.map.with_index do |column, index|
+      "'#{ first_entity[index] }' AS '#{ column }'"
+    end.join(", ")
+
+    unions  = entities_values.map do |entity_values|
+      "UNION ALL SELECT #{ entity_values } "
+    end.join
+
+    query = "INSERT INTO %s SELECT %s %s"
+    query % [table, values_as_columns, unions]
+  end
+
 
   def prepare_blank_insert_request(table, columns)
     columns_string = columns.join(',')
@@ -118,48 +149,49 @@ class Populator
     @db.prepare blank_request
   end
 
-  def prepare_data_for_insert(table, data_kind, data_template, records_number, parent_record_id = nil)
+  def prepare_data_for_insert(table, data_kind, data_template, entities_ids, parent_record_id = nil)
     case data_kind
     when 'medical_visits'
-      prepare_data_for_medical_visits table, data_template, records_number
+      prepare_data_for_medical_visits table, data_template, entities_ids
     when 'pharmacy_visits'
-      prepare_data_for_pharmacy_visits table, data_template, records_number
+      prepare_data_for_pharmacy_visits table, data_template, entities_ids
     when 'medical_visit_data'
-      prepare_data_for_medical_visit_data table, data_template, records_number, parent_record_id
+      prepare_data_for_medical_visit_data table, data_template, entities_ids, parent_record_id
     when 'pharmacy_visit_data'
-      prepare_data_for_pharmacy_visit_data table, data_template, records_number, parent_record_id
+      prepare_data_for_pharmacy_visit_data table, data_template, entities_ids, parent_record_id
     when 'visit_participants'
-      prepare_data_for_visit_participants table, data_template, records_number, parent_record_id
+      prepare_data_for_visit_participants table, data_template, entities_ids, parent_record_id
     when 'dymanic_visit_data'
-      prepare_data_for_dymanic_visit_data table, data_template, records_number, parent_record_id
+      prepare_data_for_dymanic_visit_data table, data_template, entities_ids, parent_record_id
     when 'pathologies'
-      prepare_data_for_pathologies table, data_template, records_number, parent_record_id
+      prepare_data_for_pathologies table, data_template, entities_ids, parent_record_id
     when 'pharma_evaluations'
-      prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
+      prepare_data_for_pharma_evaluations table, data_template, entities_ids, parent_record_id
     when 'contact'
-      prepare_data_for_contacts table, data_template, records_number
+      prepare_data_for_contacts table, data_template, entities_ids
     when 'references'
-      prepare_data_for_references table, data_template, records_number, parent_record_id
+      prepare_data_for_references table, data_template, entities_ids, parent_record_id
     when 'application_event_data'
-      prepare_data_for_event_data table, data_template, records_number, parent_record_id
+      prepare_data_for_event_data table, data_template, entities_ids, parent_record_id
     when 'application_event_participants'
-      prepare_data_for_event_participants table, data_template, records_number, parent_record_id
+      prepare_data_for_event_participants table, data_template, entities_ids, parent_record_id
     when 'target_frequencies'
-      prepare_data_for_target_frequencies table, data_template, records_number
+      prepare_data_for_target_frequencies table, data_template, entities_ids
     when 'organizations'
-      prepare_data_for_organizations table, data_template, records_number
+      prepare_data_for_organizations table, data_template, entities_ids
     when 'organization_additional_info'
-      prepare_data_for_organization_additional_info table, data_template, records_number, parent_record_id
+      prepare_data_for_organization_additional_info table, data_template, entities_ids, parent_record_id
     else
       raise "No idea how to prepare data for: #{data_kind}"
     end
   end
 
-  def prepare_data_for_organization_additional_info(table, template, records_number, parent_record_id)
+  def prepare_data_for_organization_additional_info(table, template, entities_ids, parent_record_id)
     data_array = []
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :organization => parent_record_id
       }
@@ -167,13 +199,14 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_organizations(table, template, records_number)
+  def prepare_data_for_organizations(table, template, entities_ids)
     data_array = []
     time_now = Time.now.strftime("%d-%m-%Y %R")
     brick_data = get_random_brick
 
-    records_number.times do |i|
+    entities_ids.each_with_index do |id, i|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :brick_city => brick_data[:name],
           :brick_id => brick_data[:sf_id],
@@ -197,17 +230,18 @@ class Populator
     @db.execute("select zvalue from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZENTITYID = '012D00000002XguIAE' limit 1) order by random() limit 1")
   end
 
-  def prepare_data_for_target_frequencies(table, template, records_number)
+  def prepare_data_for_target_frequencies(table, template, entities_ids)
     data_array = []
     user_data = get_user
     contact_data = get_random_medical_contact
     marketing_cycle_data = get_active_marketing_cycle
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => contact_data[:id],
-          :marketing_cycle => marketing_cycle_data[id],
+          :marketing_cycle => marketing_cycle_data[:id],
           :target_category => get_random_target_category_for_contact,
           :target_id => get_target_id,
           :user_id => user_data[:sf_id]
@@ -225,12 +259,13 @@ class Populator
     target_data[0]
   end
 
-  def prepare_data_for_event_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_event_data(table, template, entities_ids, parent_record_id)
     data_array = []
     product_data = get_random_product
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :event => parent_record_id,
           :product => product_data[:id]
@@ -239,12 +274,13 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_event_participants(table, template, records_number, parent_record_id)
+  def prepare_data_for_event_participants(table, template, entities_ids, parent_record_id)
     data_array = []
     contact_data = get_random_contact
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => contact_data[:id],
           :event => parent_record_id
@@ -253,12 +289,13 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_contacts(table, template, records_number)
+  def prepare_data_for_contacts(table, template, entities_ids)
     data_array = []
     time_now = Time.now.strftime("%d-%m-%Y %R")
 
-    records_number.times do |i|
+    entities_ids.each_with_index do |id, i|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :first_name => "Contact-#{i}",
           :last_name => "Generated #{time_now}",
@@ -272,16 +309,17 @@ class Populator
     @db.execute("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1").first
   end
 
-  def prepare_data_for_references(table, template, records_number, contact_id)
+  def prepare_data_for_references(table, template, entities_ids, contact_id)
     data_array = []
     medical_organization_data = get_random_medical_organization
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => contact_id,
           :organization => medical_organization_data[:id],
-          :id => medical_organization_data[:sf_id]
+          :organization_id => medical_organization_data[:sf_id]
       }
     end
     data_array
@@ -295,15 +333,16 @@ class Populator
     {:id => organization_id, :sf_id => organization_sf_id}
   end
 
-  def prepare_data_for_medical_visits(table, template, records_number)
+  def prepare_data_for_medical_visits(table, template, entities_ids)
     data_array = []
     start_date_time = generate_random_time
     end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
     marketing_cycle_data = get_active_marketing_cycle
     reference_data = get_random_reference
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :medical_contact => reference_data[:contact_id],
           :medical_organization => reference_data[:organization_id],
@@ -319,15 +358,16 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_pharmacy_visits(table, template, records_number)
+  def prepare_data_for_pharmacy_visits(table, template, entities_ids)
     data_array = []
     start_date_time = generate_random_time
     end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
     marketing_cycle_data = get_active_marketing_cycle
     pharmacy_organization_data = get_random_pharmacy_organization
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :pharmacy_organization => pharmacy_organization_data[:id],
           :pharmacy_organization_id => pharmacy_organization_data[:sf_id],
@@ -349,11 +389,12 @@ class Populator
     {:id => id, :sf_id => sf_id}
   end
 
-  def prepare_data_for_medical_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_medical_visit_data(table, template, entities_ids, parent_record_id)
     data_array = []
 
-    records_number.times do |i|
+    entities_ids.each_with_index do |id, i|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :product => get_random_product[:id],
           :visit => parent_record_id,
@@ -363,11 +404,12 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_pharmacy_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_pharmacy_visit_data(table, template, entities_ids, parent_record_id)
     data_array = []
 
-    records_number.times do |i|
+    entities_ids.each_with_index do |id, i|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :product => get_random_product[:id],
           :visit => parent_record_id
@@ -376,12 +418,13 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_visit_participants(table, template, records_number, parent_record_id)
+  def prepare_data_for_visit_participants(table, template, entities_ids, parent_record_id)
     data_array = []
     pharmacy_contact_data = get_random_pharmacy_contact
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => pharmacy_contact_data[:id],
           :contact_id => pharmacy_contact_data[:sf_id],
@@ -391,14 +434,15 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_pharma_evaluations(table, template, records_number, parent_record_id)
+  def prepare_data_for_pharma_evaluations(table, template, entities_ids, parent_record_id)
     data_array = []
     user_data = get_user
     visit_data = get_visit_data parent_record_id
     product_data = get_random_product
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => visit_data[:contact_id],
           :contact_id => visit_data[:contact_sf_id],
@@ -423,14 +467,15 @@ class Populator
     {:date => visit_date, :contact_id => contact_id, :contact_sf_id => contact_sf_id}
   end
 
-  def prepare_data_for_pathologies(table, template, records_number, parent_record_id)
+  def prepare_data_for_pathologies(table, template, entities_ids, parent_record_id)
     data_array = []
     user_data = get_user
     visit_data = get_visit_data parent_record_id
     product_data = get_random_product
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :contact => visit_data[:contact_id],
           :product => product_data[:id],
@@ -442,12 +487,13 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_dymanic_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_dymanic_visit_data(table, template, entities_ids, parent_record_id)
     data_array = []
     dynamic_visit_data = get_dynamic_visit_data_config
 
-    records_number.times do
+    entities_ids.each do |id|
       data_array << template % {
+          :id => id,
           :z_ent => get_z_ent(table),
           :product => dynamic_visit_data[:product],
           :visit => parent_record_id,

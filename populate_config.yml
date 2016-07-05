@@ -11,6 +11,7 @@ data:
     operation: insert
     table: ZVISIT
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZALLDAY: 0
@@ -47,6 +48,7 @@ data:
         operation: insert
         table: ZVISITDATA
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 2
           ZISMODIFIED: 1
@@ -62,6 +64,7 @@ data:
         operation: insert
         table: ZDYNAMICVISITDATA
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -73,6 +76,7 @@ data:
         operation: insert
         table: ZPATHOLOGY
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -89,6 +93,7 @@ data:
         operation: insert
         table: ZPHARMAEVALUATION
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -109,6 +114,7 @@ data:
     operation: insert
     table: ZVISIT
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZALLDAY: 0
@@ -143,6 +149,7 @@ data:
         operation: insert
         table: ZVISITDATA
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -158,6 +165,7 @@ data:
         operation: insert
         table: ZVISITPARTICIPANT
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISCANDIDATEFORPRESENTATION: 0
@@ -173,6 +181,7 @@ data:
         operation: insert
         table: ZEVENTDATA
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -184,6 +193,7 @@ data:
         operation: insert
         table: ZEVENTPARTICIPANT
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -193,6 +203,7 @@ data:
     operation: insert
     table: ZTARGETFREQUENCY
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZISMODIFIED: 1
@@ -207,6 +218,7 @@ data:
     operation: insert
     table: ZCONTACT
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZISMODIFIED: 1
@@ -218,6 +230,7 @@ data:
         operation: insert
         table: ZREFERENCE
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
@@ -228,6 +241,7 @@ data:
     operation: insert
     table: ZORGANIZATION
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZISMODIFIED: 1
@@ -246,6 +260,7 @@ data:
         operation: insert
         table: ZORGANIZATIONADDITIONALINFO
         columns_data:
+          Z_ID: '%{id}'
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZEVENTLIMITS: 0
@@ -269,9 +284,11 @@ data:
     operation: insert
     table:
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
   - kind: medical_info_requests # TODO: implement
     operation: insert
     table:
     columns_data:
+      Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
