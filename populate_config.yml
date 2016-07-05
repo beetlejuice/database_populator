@@ -270,25 +270,51 @@ data:
           ZSTOCKSMANAGEMENT: 0
           ZVISITLIMITS: 0
           ZORGANIZATION: '%{organization}'
-          ZAVARAGECHECK: 200.0
-          ZCASHREGISTERS: 2.0
-          ZDAILYCUSTOMERS: 100.0
-          ZFIRSTLINEPHARMACISTS: 1.0
-          ZMONTHLYSALES: 400000.0
-          ZPRODUCTSTURNOVER: 100000.0
+          ZAVARAGECHECK: 200
+          ZCASHREGISTERS: 2
+          ZDAILYCUSTOMERS: 100
+          ZFIRSTLINEPHARMACISTS: 1
+          ZMONTHLYSALES: 400000
+          ZPRODUCTSTURNOVER: 100000
           ZMONTHLYTURNOVER: 1 - 500000
           ZPHARMACYLAYOUTTYPE: Открытая
           ZPHARMACYLOCATION: Отдельностоящая
           ZPHARMACYSCHEDULE: 24/7
-  - kind: sales # TODO: implement
+  - kind: sales
     operation: insert
     table:
     columns_data:
       Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZISMODIFIED: 1
+      ZISSYNCFAILED: 0
+      ZMONTH: '%{month}'
+      ZYEAR: '%{year}'
+      ZORGANIZATION: '%{organization}'
+      ZPHARMAPRODUCTFORMULARY: '%{product_formulary}'
+      ZPRICE: 1000
+      ZSALESOUT: 10
+      ZSOURCE: Manual
+      ZTYPE: Fact
   - kind: medical_info_requests # TODO: implement
     operation: insert
     table:
     columns_data:
       Z_ID: '%{id}'
       Z_ENT: '%{z_ent}'
+      Z_OPT: 1
+      ZISMEDICALQUESTION: 1
+      ZISMODIFIED: 1
+      ZISQUALITYQUESTION: 0
+      ZISSAFETYQUESTION: 0
+      ZMIRPRODUCT: '%{product}'
+      ZCREATIONDATE:
+      ZAUTHORTYPE: Me
+      ZEMPLOYEEEMAIL: abbott.ru.test.01@gmail.com
+      ZEMPLOYEEFULLNAME: '%{user_name}'
+      ZEMPLOYEEID: '%{user_id}'
+      ZEMPLOYEEMOBILEPHONE: '%{user_phone}'
+      ZEMPLOYEEPOSITION: '%{user_positiom}'
+      ZREQUESTDESCRIPTION: '%{mir_description}'
+      ZSTATUS: ReadyToSend
