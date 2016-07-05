@@ -150,9 +150,54 @@ class Populator
       prepare_data_for_organizations table, data_template, records_number
     when 'organization_additional_info'
       prepare_data_for_organization_additional_info table, data_template, records_number, parent_record_id
+    when 'sales'
+      prepare_data_for_sales table, data_template, records_number
+    when 'medical_info_requests'
+      prepare_data_for_medical_info_requests table, data_template, records_number
     else
       raise "No idea how to prepare data for: #{data_kind}"
     end
+  end
+
+  def prepare_data_for_medical_info_requests(table, template, records_number)
+    data_array = []
+    user_data = get_user
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :product => get_random_mir_product,
+          :user_name => user_data[:name],
+          :user_phone => user_data[:phone],
+          :user_position => user_data[:position],
+          :mir_description => "Generated #{time_now} description"
+      }
+    end
+    data_array
+  end
+
+  def get_random_mir_product
+    db.execute("select z_pk from zmedicalinforequestproduct order by random() limit 1").first
+  end
+
+  def prepare_data_for_sales(table, template, records_number)
+    data_array = []
+    year = Time.now.strftime("%Y")
+
+    records_number.times do
+      data_array << template % {
+          :z_ent => get_z_ent(table),
+          :month => rand(1..12),
+          :year => year,
+          :organization => get_random_pharmacy_organization[:id],
+          :product_formulary => get_random_product_formulary
+      }
+    end
+    data_array
+  end
+
+  def get_random_product_formulary
+    @db.execute("select z_pk from zproductformulary where zproduct is not null order by random() limit 1").first
   end
 
   def prepare_data_for_organization_additional_info(table, template, records_number, parent_record_id)
@@ -169,7 +214,6 @@ class Populator
 
   def prepare_data_for_organizations(table, template, records_number)
     data_array = []
-    time_now = Time.now.strftime("%d-%m-%Y %R")
     brick_data = get_random_brick
 
     records_number.times do |i|
@@ -194,7 +238,7 @@ class Populator
   end
 
   def get_random_subtype_from_recordtype(recordtype)
-    @db.execute("select zvalue from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZENTITYID = '012D00000002XguIAE' limit 1) order by random() limit 1")
+    @db.execute("select zvalue from zsubtype where zrecordtype = (select z_pk from zrecordtype where zentityid = '#{recordtype}' limit 1) order by random() limit 1")
   end
 
   def prepare_data_for_target_frequencies(table, template, records_number)
@@ -255,7 +299,6 @@ class Populator
 
   def prepare_data_for_contacts(table, template, records_number)
     data_array = []
-    time_now = Time.now.strftime("%d-%m-%Y %R")
 
     records_number.times do |i|
       data_array << template % {
@@ -266,6 +309,10 @@ class Populator
       }
     end
     data_array
+  end
+
+  def time_now
+    Time.now.strftime("%d-%m-%Y %R")
   end
 
   def get_random_specialty
@@ -343,10 +390,10 @@ class Populator
 
   def get_active_marketing_cycle
     marketing_cycle_data = @db.execute("select z_pk, zentityid from zmarketingcycle where zisactive = 1").first
-    id = marketing_cycle_data[0]
-    sf_id = marketing_cycle_data[1]
+    marketing_cycle_id = marketing_cycle_data[0]
+    marketing_cycle_sf_id = marketing_cycle_data[1]
 
-    {:id => id, :sf_id => sf_id}
+    {:id => marketing_cycle_id, :sf_id => marketing_cycle_sf_id}
   end
 
   def prepare_data_for_medical_visit_data(table, template, records_number, parent_record_id)
@@ -474,7 +521,7 @@ class Populator
   end
 
   def generate_random_status
-    %w(Open Processing Closed).pick
+    %w(Open Processing Closed).sample
   end
 
   def generate_random_time
@@ -509,12 +556,14 @@ class Populator
   end
 
   def get_user
-    user_data = @db.execute("select zentityid, zname, zuserdivision from zuser").first
+    user_data = @db.execute("select zentityid, zname, zuserdivision, zmobilephone, zposition from zuser").first
     user_sf_id = user_data[0]
     user_name = user_data[1]
     user_division = user_data[2]
+    user_phone = user_data[3]
+    user_position = user_data[4]
 
-    {:sf_id => user_sf_id, :name => user_name, :division => user_division}
+    {:sf_id => user_sf_id, :name => user_name, :division => user_division, :phone => user_phone, :position => user_position}
   end
 
   def get_random_product
@@ -529,7 +578,7 @@ class Populator
     recordtype = case type
                  when :medical then MEDICAL_CONTACT_RECORDTYPE_ID
                  when :pharmacy then PHARMACY_CONTACT_RECORDTYPE_ID
-                 else %w(MEDICAL_CONTACT_RECORDTYPE_ID PHARMACY_CONTACT_RECORDTYPE_ID).pick
+                 else [MEDICAL_CONTACT_RECORDTYPE_ID, PHARMACY_CONTACT_RECORDTYPE_ID].sample
                  end
 
     contact_data = @db.execute("select z_pk, zentityid from zcontact where zrecordtypeid = '#{recordtype}' order by random() limit 1").first
