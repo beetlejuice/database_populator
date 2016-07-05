@@ -6,8 +6,8 @@ POPULATE_CONFIG_FILEPATH = './populate_config.yml'
 NUMBER_CONFIG_FILEPATH = './populate_number.yml'
 DYNAMIC_KPI_CONFIG_FILEPATH = './dynamic_kpi_config.yml'
 
-INSERT_TEMPLATE = "insert into %s (%s) values (%s)" # 'insert into @table, ([@columns]) values (?,?,?)'
-UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s)"
+INSERT_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s)" # 'insert into @table, ([@columns]) values (?,?,?)'
+UPDATE_TEMPLATE = "UPDATE %s SET ZISMODIFIED = 1 WHERE Z_PK IN (%s)"
 
 VISITS_MONTHS_INTERVAL = 6
 DIFF_BETWEEN_UNIX_AND_IOS_TIME = 978307200
@@ -41,22 +41,20 @@ class Populator
     end
   end
 
-  def populate_data
-    if @populate_data.nil?
-      populate_config = YAML::load_file POPULATE_CONFIG_FILEPATH
-      populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
-
-      # populate_config.merge(populate_number){ |key, v1, v2| v1.zip(v2).map{ |h1, h2| h1.merge(h2) } }['data']
-      merge_configs(populate_config, populate_number) # hash['data']
-    else
-      @populate_data
-    end
-  end
-
   private
+
+  def populate_data
+    return @populate_data if @populate_data
+
+    populate_config = YAML::load_file POPULATE_CONFIG_FILEPATH
+    populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
+
+    @populate_data = merge_configs(populate_config, populate_number) # hash['data']
+  end
 
   def merge_configs *configs
     # TODO: implement
+    # populate_config.merge(populate_number){ |key, v1, v2| v1.zip(v2).map{ |h1, h2| h1.merge(h2) } }['data']
     # result_hash['data']
   end
 
@@ -141,12 +139,12 @@ class Populator
     values_string = (['?']*columns.size).join(',') # (?, ?, ?)
 
     blank_request = INSERT_TEMPLATE % [table, columns_string, values_string]
-    @db.prepare blank_request
+    db.prepare blank_request
   end
 
   def prepare_blank_update_request(table, ids)
     blank_request = UPDATE_TEMPLATE % [table, ids]
-    @db.prepare blank_request
+    db.prepare blank_request
   end
 
   def prepare_data_for_insert(table, data_kind, data_template, entities_ids, parent_record_id = nil)
@@ -219,7 +217,7 @@ class Populator
   end
 
   def get_random_brick
-    brick_data = @db.execute "select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1"
+    brick_data = db.execute "select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1"
     brick_name = brick_data[0]
     brick_sf_id = brick[1]
 
@@ -227,7 +225,7 @@ class Populator
   end
 
   def get_random_subtype_from_recordtype(recordtype)
-    @db.execute("select zvalue from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZENTITYID = '012D00000002XguIAE' limit 1) order by random() limit 1")
+    db.execute("select zvalue from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZENTITYID = '012D00000002XguIAE' limit 1) order by random() limit 1")
   end
 
   def prepare_data_for_target_frequencies(table, template, entities_ids)
@@ -251,11 +249,11 @@ class Populator
   end
 
   def get_random_target_category_for_contact
-    @db.execute("select zvalue from ztargetcategory where ZTYPE = 'ContactTargetCategory' order by random() limit 1").first
+    db.execute("select zvalue from ztargetcategory where ZTYPE = 'ContactTargetCategory' order by random() limit 1").first
   end
 
   def get_target_id
-    target_data = @db.execute("select zentityid from ztarget").first # TODO: check if this will work for RM
+    target_data = db.execute("select zentityid from ztarget").first # TODO: check if this will work for RM
     target_data[0]
   end
 
@@ -306,7 +304,7 @@ class Populator
   end
 
   def get_random_specialty
-    @db.execute("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1").first
+    db.execute("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1").first
   end
 
   def prepare_data_for_references(table, template, entities_ids, contact_id)
@@ -326,7 +324,7 @@ class Populator
   end
 
   def get_random_medical_organization
-    organization_data = @db.execute("select z_pk, zentityid from zorganization where zrecordtypeid = #{MEDICAL_ORGANIZATION_RECORDTYPE_ID} order by random() limit 1").first
+    organization_data = db.execute("select z_pk, zentityid from zorganization where zrecordtypeid = #{MEDICAL_ORGANIZATION_RECORDTYPE_ID} order by random() limit 1").first
     organization_id = organization_data[0]
     organization_sf_id = organization_data[1]
 
@@ -382,7 +380,7 @@ class Populator
   end
 
   def get_active_marketing_cycle
-    marketing_cycle_data = @db.execute("select z_pk, zentityid from zmarketingcycle where zisactive = 1").first
+    marketing_cycle_data = db.execute("select z_pk, zentityid from zmarketingcycle where zisactive = 1").first
     id = marketing_cycle_data[0]
     sf_id = marketing_cycle_data[1]
 
@@ -516,7 +514,7 @@ class Populator
 
   def get_z_ent(zobject)
     object_name = zobject[1..-1]
-    $db.execute("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'").first
+    db.execute("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'").first
   end
 
   def generate_random_status
@@ -536,18 +534,18 @@ class Populator
   end
 
   def get_random_reference
-    reference_ids = @db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zspecialty = 'Терапевт') order by random() limit 1").first
+    reference_ids = db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zspecialty = 'Терапевт') order by random() limit 1").first
     contact_id = reference_ids[0]
     organization_id = reference_ids[1]
-    contact_sf_id = @db.execute("select zentityid from zcontact where z_pk = #{contact}")
-    organization_sf_id = @db.execute("select zentityid from zorganization where z_pk = #{organization}")
+    contact_sf_id = db.execute("select zentityid from zcontact where z_pk = #{contact}")
+    organization_sf_id = db.execute("select zentityid from zorganization where z_pk = #{organization}")
 
     {:contact_id => contact_id, :organization_id => organization_id,
      :contact_sf_id => contact_sf_id, :organization_sf_id => organization_sf_id}
   end
 
   def get_random_pharmacy_organization
-    organization_data = @db.execute("select z_pk, zentityid from zorganization where zsubtype = 'Аптека' order by random() limit 1").first
+    organization_data = db.execute("select z_pk, zentityid from zorganization where zsubtype = 'Аптека' order by random() limit 1").first
     organization_id = organization_data[0]
     organization_sf_id = organization_data[1]
 
@@ -555,7 +553,7 @@ class Populator
   end
 
   def get_user
-    user_data = @db.execute("select zentityid, zname, zuserdivision from zuser").first
+    user_data = db.execute("select zentityid, zname, zuserdivision from zuser").first
     user_sf_id = user_data[0]
     user_name = user_data[1]
     user_division = user_data[2]
@@ -564,7 +562,7 @@ class Populator
   end
 
   def get_random_product
-    product_data = @db.execute("select z_pk, zentityid from zproduct order by random() limit 1").first
+    product_data = db.execute("select z_pk, zentityid from zproduct order by random() limit 1").first
     product_id = product_data[0]
     product_sf_id = product_data[1]
 
