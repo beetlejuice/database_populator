@@ -32,12 +32,19 @@ class Populator
   def populate
     populate_data.each do |object|
       if object['number'].to_i > 0
+        message_objects = [object['kind']]
+
+        related_objects = object['related_objects'] || []
+        message_objects += related_objects.map{ |rel_obj| rel_obj['kind'] }
+
+        message_objects_str = message_objects.join(", ")
+
         case object['operation']
           when 'insert'
-            p "Inserting #{object['kind']}"
+            p "Inserting #{message_objects_str}"
             insert_object object
           when 'update'
-            p "Updating #{object['kind']}"
+            p "Updating #{message_objects_str}"
             update_object object
           else
             p "No operation set for object kind: #{object[kind]}!"
@@ -52,7 +59,8 @@ class Populator
       populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
 
       @populate_data = populate_config.deep_merge(populate_number)['data']
-      # p "Pop data: #{@populate_data}"
+      p @populate_data
+      @populate_data
     else
       @populate_data
     end
@@ -561,7 +569,7 @@ class Populator
   end
 
   def generate_random_status
-    %w(Open Processing Closed).sample
+    %w(Open Processing Completed).sample
   end
 
   def generate_random_time
@@ -577,7 +585,7 @@ class Populator
   end
 
   def get_random_reference
-    reference_ids = @db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zspecialty = 'Терапевт') order by random() limit 1").first
+    reference_ids = @db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zrecordtypeid = '#{MEDICAL_CONTACT_RECORDTYPE_ID}') order by random() limit 1").first
     contact_id = reference_ids[0]
     organization_id = reference_ids[1]
     contact_sf_id = @db.get_first_value("select zentityid from zcontact where z_pk = #{contact_id}")
