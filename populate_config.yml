@@ -55,8 +55,6 @@ data:
           ZDETAILSEQUENCE: '%{detail_sequence}'
           ZISFULLYDETAILED: 1
           ZORDERNUMBER: 0
-          ZTARGETNUMBER: 0
-          ZTOTAL: 0
       - kind: dymanic_visit_data
         operation: insert
         table: ZDYNAMICVISITDATA
@@ -65,9 +63,9 @@ data:
           Z_OPT: 1
           ZISMODIFIED: 1
           ZISSYNCFAILED: 0
-          ZPRODUCT: '%{dynamic_kpi_product}'
+          ZPRODUCT: '%{product}'
           ZVISIT: '%{visit}'
-          ZKPI: '%{dynamic_kpi_json}'
+          ZKPI: '%{json}'
       - kind: pathologies
         operation: insert
         table: ZPATHOLOGY
@@ -151,8 +149,6 @@ data:
           ZDETAILSEQUENCE: 0
           ZISFULLYDETAILED: 1
           ZORDERNUMBER: 0
-          ZTARGETNUMBER: 0
-          ZTOTAL: 0
       - kind: visit_participants
         operation: insert
         table: ZVISITPARTICIPANT
@@ -175,7 +171,7 @@ data:
           Z_ENT: '%{z_ent}'
           Z_OPT: 1
           ZISMODIFIED: 1
-          ZIFULLYDETAILED: 1
+          ZISFULLYDETAILED: 1
           ZWASDELETED: 0
           ZEVENT: '%{event}'
           ZPRODUCT: '%{product}'
@@ -209,9 +205,13 @@ data:
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
       ZISMODIFIED: 1
+      ZISSYNCFAILED: 0
+      ZWASDELETED: 0
       ZFIRSTNAME: '%{first_name}'
       ZLASTNAME: '%{last_name}'
       ZSPECIALTY: '%{specialty}'
+      ZISPHARMACY: 0
+      ZRECORDTYPEID: '%{recordtype_id}'
     related_objects:
       - kind: references
         operation: insert
@@ -266,7 +266,7 @@ data:
           ZPHARMACYSCHEDULE: 24/7
   - kind: sales
     operation: insert
-    table:
+    table: ZPHARMACYSALES
     columns_data:
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
@@ -282,7 +282,7 @@ data:
       ZTYPE: Fact
   - kind: medical_info_requests
     operation: insert
-    table:
+    table: ZMEDICALINFOREQUEST
     columns_data:
       Z_ENT: '%{z_ent}'
       Z_OPT: 1
@@ -291,12 +291,12 @@ data:
       ZISQUALITYQUESTION: 0
       ZISSAFETYQUESTION: 0
       ZMIRPRODUCT: '%{product}'
-      ZCREATIONDATE:
+      ZCREATIONDATE: '%{creation_date}'
       ZAUTHORTYPE: Me
       ZEMPLOYEEEMAIL: abbott.ru.test.01@gmail.com
       ZEMPLOYEEFULLNAME: '%{user_name}'
       ZEMPLOYEEID: '%{user_id}'
       ZEMPLOYEEMOBILEPHONE: '%{user_phone}'
-      ZEMPLOYEEPOSITION: '%{user_positiom}'
+      ZEMPLOYEEPOSITION: '%{user_position}'
       ZREQUESTDESCRIPTION: '%{mir_description}'
       ZSTATUS: ReadyToSend

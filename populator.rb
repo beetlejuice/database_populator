@@ -1,13 +1,14 @@
-require 'sqlite3'
 require 'yaml'
 require 'date'
+require_relative 'ruby_extentions'
 
 POPULATE_CONFIG_FILEPATH = './populate_config.yml'
 NUMBER_CONFIG_FILEPATH = './populate_number.yml'
 DYNAMIC_KPI_CONFIG_FILEPATH = './dynamic_kpi_config.yml'
 
 INSERT_TEMPLATE = "insert into %s (%s) values (%s)" # 'insert into @table, ([@columns]) values (?,?,?)'
-UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s)"
+UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s) and "
+
 
 VISITS_MONTHS_INTERVAL = 6
 DIFF_BETWEEN_UNIX_AND_IOS_TIME = 978307200
@@ -17,6 +18,8 @@ MEDICAL_ORGANIZATION_RECORDTYPE_ID = '012D00000002XgpIAE'
 MEDICAL_CONTACT_RECORDTYPE_ID = '012D00000002Xh4IAE'
 PHARMACY_ORGANIZATION_RECORDTYPE_ID = '012D00000002XguIAE'
 PHARMACY_CONTACT_RECORDTYPE_ID = '012D00000002aMvIAI'
+
+VALUES_DIVIDER = '|'
 
 class Populator
 
@@ -31,8 +34,10 @@ class Populator
       if object['number'].to_i > 0
         case object['operation']
           when 'insert'
+            p "Inserting #{object['kind']}"
             insert_object object
           when 'update'
+            p "Updating #{object['kind']}"
             update_object object
           else
             p "No operation set for object kind: #{object[kind]}!"
@@ -46,8 +51,11 @@ class Populator
       populate_config = YAML::load_file POPULATE_CONFIG_FILEPATH
       populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
 
+      @populate_data = populate_config.deep_merge(populate_number)['data']
+      p "Pop data: #{@populate_data}"
+
       # populate_config.merge(populate_number){ |key, v1, v2| v1.zip(v2).map{ |h1, h2| h1.merge(h2) } }['data']
-      merge_configs(populate_config, populate_number) # hash['data']
+      # merge_configs(populate_config, populate_number) # hash['data']
     else
       @populate_data
     end
@@ -65,13 +73,14 @@ class Populator
     table = object['table']
     columns = object['columns_data'].keys
     data_kind = object['kind']
-    data_template = object['columns_data'].values
+    data_template = object['columns_data'].values.join(VALUES_DIVIDER)
 
     request = prepare_blank_insert_request table, columns
     records_data = prepare_data_for_insert table, data_kind, data_template, records_number, parent_id
 
     records_data.each do |record_data|
-      request.execute *record_data
+      record_data_array = record_data.split(VALUES_DIVIDER)
+      request.execute *record_data_array
 
       related_objects = object['related_objects']
       unless related_objects.nil?
@@ -87,7 +96,7 @@ class Populator
     records_number = object['number'].to_i
     table = object['table']
 
-    ids = get_random_record_ids(table, records_number).join(', ')
+    ids = get_random_record_ids(table, records_number)
     request = prepare_blank_update_request table, ids
     request.execute
 
@@ -104,7 +113,8 @@ class Populator
   def get_random_record_ids(table, quantity)
     existing_records_count = get_records_count table
     quantity = (quantity <= existing_records_count) ? quantity : existing_records_count
-    @db.execute "select Z_PK from #{table} order by random() limit #{quantity}"
+    record_ids = @db.execute("select Z_PK from #{table} order by random() limit #{quantity}")
+    record_ids.flatten
   end
 
   def prepare_blank_insert_request(table, columns)
@@ -116,7 +126,7 @@ class Populator
   end
 
   def prepare_blank_update_request(table, ids)
-    blank_request = UPDATE_TEMPLATE % [table, ids]
+    blank_request = UPDATE_TEMPLATE % [table, ids.join(', ')]
     @db.prepare blank_request
   end
 
@@ -138,7 +148,7 @@ class Populator
       prepare_data_for_pathologies table, data_template, records_number, parent_record_id
     when 'pharma_evaluations'
       prepare_data_for_pharma_evaluations table, data_template, records_number, parent_record_id
-    when 'contact'
+    when 'contacts'
       prepare_data_for_contacts table, data_template, records_number
     when 'references'
       prepare_data_for_references table, data_template, records_number, parent_record_id
@@ -163,13 +173,16 @@ class Populator
 
   def prepare_data_for_medical_info_requests(table, template, records_number)
     data_array = []
+    z_ent = get_z_ent(table)
     user_data = get_user
 
     records_number.times do
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :product => get_random_mir_product,
+          :creation_date => generate_random_time,
           :user_name => user_data[:name],
+          :user_id => user_data[:sf_id],
           :user_phone => user_data[:phone],
           :user_position => user_data[:position],
           :mir_description => "Generated #{time_now} description"
@@ -179,16 +192,17 @@ class Populator
   end
 
   def get_random_mir_product
-    db.execute("select z_pk from zmedicalinforequestproduct order by random() limit 1").first
+    db.get_first_value("select z_pk from zmedicalinforequestproduct order by random() limit 1")
   end
 
   def prepare_data_for_sales(table, template, records_number)
     data_array = []
+    z_ent = get_z_ent(table)
     year = Time.now.strftime("%Y")
 
     records_number.times do
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :month => rand(1..12),
           :year => year,
           :organization => get_random_pharmacy_organization[:id],
@@ -199,16 +213,17 @@ class Populator
   end
 
   def get_random_product_formulary
-    @db.execute("select z_pk from zproductformulary where zproduct is not null order by random() limit 1").first
+    @db.get_first_value("select z_pk from zproductformulary where zproduct is not null order by random() limit 1")
   end
 
-  def prepare_data_for_organization_additional_info(table, template, records_number, parent_record_id)
+  def prepare_data_for_organization_additional_info(table, template, records_number, organization_id)
     data_array = []
+    z_ent = get_z_ent(table)
 
     records_number.times do
       data_array << template % {
-          :z_ent => get_z_ent(table),
-          :organization => parent_record_id
+          :z_ent => z_ent,
+          :organization => organization_id
       }
     end
     data_array
@@ -216,46 +231,51 @@ class Populator
 
   def prepare_data_for_organizations(table, template, records_number)
     data_array = []
-    brick_data = get_random_brick
+    z_ent = get_z_ent(table)
 
     records_number.times do |i|
+      brick_data = get_random_brick
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :brick_city => brick_data[:name],
           :brick_id => brick_data[:sf_id],
           :name => "Generated #{time_now} organization-#{i}",
           :recordtype_id => PHARMACY_ORGANIZATION_RECORDTYPE_ID,
-          :subtype => get_random_subtype_from_recordtype PHARMACY_ORGANIZATION_RECORDTYPE_ID
+          :subtype => get_random_subtype_from_recordtype(PHARMACY_ORGANIZATION_RECORDTYPE_ID)
       }
     end
     data_array
   end
 
   def get_random_brick
-    brick_data = @db.execute "select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1"
+    brick_data = @db.execute("select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1").first
     brick_name = brick_data[0]
-    brick_sf_id = brick[1]
+    brick_sf_id = brick_data[1]
 
     {:name => brick_name, :sf_id => brick_sf_id}
   end
 
   def get_random_subtype_from_recordtype(recordtype)
-    @db.execute("select zvalue from zsubtype where zrecordtype = (select z_pk from zrecordtype where zentityid = '#{recordtype}' limit 1) order by random() limit 1")
+    @db.get_first_value("select zvalue from zsubtype where zrecordtype = (select z_pk from zrecordtype where zentityid = '#{recordtype}' limit 1) order by random() limit 1")
   end
 
   def prepare_data_for_target_frequencies(table, template, records_number)
     data_array = []
+    z_ent = get_z_ent(table)
     user_data = get_user
-    contact_data = get_random_medical_contact
+    target_id = get_target_id
     marketing_cycle_data = get_active_marketing_cycle
 
     records_number.times do
+      contact_data = get_random_medical_contact
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :contact => contact_data[:id],
-          :marketing_cycle => marketing_cycle_data[id],
+          :marketing_cycle => marketing_cycle_data[:id],
           :target_category => get_random_target_category_for_contact,
-          :target_id => get_target_id,
+          :target_id => target_id,
           :user_id => user_data[:sf_id]
       }
     end
@@ -263,7 +283,7 @@ class Populator
   end
 
   def get_random_target_category_for_contact
-    @db.execute("select zvalue from ztargetcategory where ZTYPE = 'ContactTargetCategory' order by random() limit 1").first
+    @db.get_first_value("select zvalue from ztargetcategory where ZTYPE = 'ContactTargetCategory' order by random() limit 1")
   end
 
   def get_target_id
@@ -271,29 +291,33 @@ class Populator
     target_data[0]
   end
 
-  def prepare_data_for_event_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_event_data(table, template, records_number, event_id)
     data_array = []
-    product_data = get_random_product
+    z_ent = get_z_ent(table)
 
     records_number.times do
+      product_data = get_random_product
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
-          :event => parent_record_id,
+          :z_ent => z_ent,
+          :event => event_id,
           :product => product_data[:id]
       }
     end
     data_array
   end
 
-  def prepare_data_for_event_participants(table, template, records_number, parent_record_id)
+  def prepare_data_for_event_participants(table, template, records_number, event_id)
     data_array = []
-    contact_data = get_random_contact
+    z_ent = get_z_ent(table)
 
     records_number.times do
+      contact_data = get_random_contact
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :contact => contact_data[:id],
-          :event => parent_record_id
+          :event => event_id
       }
     end
     data_array
@@ -301,13 +325,15 @@ class Populator
 
   def prepare_data_for_contacts(table, template, records_number)
     data_array = []
+    z_ent = get_z_ent(table)
 
     records_number.times do |i|
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :first_name => "Contact-#{i}",
           :last_name => "Generated #{time_now}",
-          :specialty => get_random_specialty
+          :specialty => get_random_specialty,
+          :recordtype_id => MEDICAL_CONTACT_RECORDTYPE_ID
       }
     end
     data_array
@@ -318,26 +344,28 @@ class Populator
   end
 
   def get_random_specialty
-    @db.execute("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1").first
+    @db.get_first_value("select ZVALUE from ZSUBTYPE where ZRECORDTYPE = (select Z_PK from ZRECORDTYPE where ZNAME = 'Контакт. Врач') order by random() limit 1")
   end
 
   def prepare_data_for_references(table, template, records_number, contact_id)
     data_array = []
-    medical_organization_data = get_random_medical_organization
+    z_ent = get_z_ent(table)
 
     records_number.times do
+      medical_organization_data = get_random_medical_organization
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :contact => contact_id,
           :organization => medical_organization_data[:id],
-          :id => medical_organization_data[:sf_id]
+          :organization_id => medical_organization_data[:sf_id]
       }
     end
     data_array
   end
 
   def get_random_medical_organization
-    organization_data = @db.execute("select z_pk, zentityid from zorganization where zrecordtypeid = #{MEDICAL_ORGANIZATION_RECORDTYPE_ID} order by random() limit 1").first
+    organization_data = @db.execute("select z_pk, zentityid from zorganization where zrecordtypeid = '#{MEDICAL_ORGANIZATION_RECORDTYPE_ID}' order by random() limit 1").first
     organization_id = organization_data[0]
     organization_sf_id = organization_data[1]
 
@@ -346,21 +374,23 @@ class Populator
 
   def prepare_data_for_medical_visits(table, template, records_number)
     data_array = []
-    start_date_time = generate_random_time
-    end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+    z_ent = get_z_ent(table)
     marketing_cycle_data = get_active_marketing_cycle
-    reference_data = get_random_reference
 
     records_number.times do
+      start_date_time = generate_random_time
+      end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+      reference_data = get_random_reference
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :medical_contact => reference_data[:contact_id],
           :medical_organization => reference_data[:organization_id],
           :medical_contact_id => reference_data[:contact_sf_id],
           :medical_organization_id => reference_data[:organization_sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
-          :marketing_cycle => marketing_cycle_data[:sf_id],
+          :marketing_cycle_id => marketing_cycle_data[:sf_id],
           :status => generate_random_status,
           :user_id => get_user[:sf_id]
       }
@@ -370,19 +400,21 @@ class Populator
 
   def prepare_data_for_pharmacy_visits(table, template, records_number)
     data_array = []
-    start_date_time = generate_random_time
-    end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+    z_ent = get_z_ent(table)
     marketing_cycle_data = get_active_marketing_cycle
-    pharmacy_organization_data = get_random_pharmacy_organization
 
     records_number.times do
+      start_date_time = generate_random_time
+      end_date_time = start_date_time + THIRTY_MINUTES_IN_MILLISECONDS
+      pharmacy_organization_data = get_random_pharmacy_organization
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :pharmacy_organization => pharmacy_organization_data[:id],
           :pharmacy_organization_id => pharmacy_organization_data[:sf_id],
           :date_start => start_date_time,
           :date_end => end_date_time,
-          :marketing_cycle => marketing_cycle_data[:sf_id],
+          :marketing_cycle_id => marketing_cycle_data[:sf_id],
           :status => generate_random_status,
           :user_id => get_user[:sf_id]
       }
@@ -398,63 +430,69 @@ class Populator
     {:id => marketing_cycle_id, :sf_id => marketing_cycle_sf_id}
   end
 
-  def prepare_data_for_medical_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_medical_visit_data(table, template, records_number, visit_id)
     data_array = []
+    z_ent = get_z_ent(table)
 
     records_number.times do |i|
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :product => get_random_product[:id],
-          :visit => parent_record_id,
+          :visit => visit_id,
           :detail_sequence => i
       }
     end
     data_array
   end
 
-  def prepare_data_for_pharmacy_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_pharmacy_visit_data(table, template, records_number, visit_id)
     data_array = []
+    z_ent = get_z_ent(table)
 
     records_number.times do |i|
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :product => get_random_product[:id],
-          :visit => parent_record_id
+          :visit => visit_id
       }
     end
     data_array
   end
 
-  def prepare_data_for_visit_participants(table, template, records_number, parent_record_id)
+  def prepare_data_for_visit_participants(table, template, records_number, visit_id)
     data_array = []
-    pharmacy_contact_data = get_random_pharmacy_contact
+    z_ent = get_z_ent(table)
 
     records_number.times do
+      pharmacy_contact_data = get_random_pharmacy_contact
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :contact => pharmacy_contact_data[:id],
           :contact_id => pharmacy_contact_data[:sf_id],
-          :visit => parent_record_id
+          :visit => visit_id
       }
     end
     data_array
   end
 
-  def prepare_data_for_pharma_evaluations(table, template, records_number, parent_record_id)
+  def prepare_data_for_pharma_evaluations(table, template, records_number, visit_id)
     data_array = []
+    z_ent = get_z_ent(table)
     user_data = get_user
-    visit_data = get_visit_data parent_record_id
-    product_data = get_random_product
+    visit_info = get_visit_info visit_id
 
     records_number.times do
+      product_data = get_random_product
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
-          :contact => visit_data[:contact_id],
-          :contact_id => visit_data[:contact_sf_id],
+          :z_ent => z_ent,
+          :contact => visit_info[:contact_id],
+          :contact_id => visit_info[:contact_sf_id],
           :product => product_data[:id],
           :product_id => product_data[:sf_id],
-          :visit => parent_record_id,
-          :visit_date => visit_data[:date],
+          :visit => visit_id,
+          :visit_date => visit_info[:date],
           :user_division => user_data[:division],
           :user_id => user_data[:sf_id],
           :user_name => user_data[:name]
@@ -463,27 +501,29 @@ class Populator
     data_array
   end
 
-  def get_visit_data(parent_record_id)
-    visit_data = @db.execute("select ZDATETIME, ZCONTACT, ZCONTACTID from ZVISIT where Z_PK = #{parent_record_id}").first
-    visit_date = visit_data[0]
-    contact_id = visit_data[1]
-    contact_sf_id = visit_data[2]
+  def get_visit_info(visit_id)
+    visit_info = @db.execute("select ZDATETIME, ZCONTACT, ZCONTACTID from ZVISIT where Z_PK = #{visit_id}").first
+    visit_date = visit_info[0]
+    contact_id = visit_info[1]
+    contact_sf_id = visit_info[2]
 
     {:date => visit_date, :contact_id => contact_id, :contact_sf_id => contact_sf_id}
   end
 
-  def prepare_data_for_pathologies(table, template, records_number, parent_record_id)
+  def prepare_data_for_pathologies(table, template, records_number, visit_id)
     data_array = []
+    z_ent = get_z_ent(table)
     user_data = get_user
-    visit_data = get_visit_data parent_record_id
-    product_data = get_random_product
+    visit_info = get_visit_info visit_id
 
     records_number.times do
+      product_data = get_random_product
+
       data_array << template % {
-          :z_ent => get_z_ent(table),
-          :contact => visit_data[:contact_id],
+          :z_ent => z_ent,
+          :contact => visit_info[:contact_id],
           :product => product_data[:id],
-          :visit => parent_record_id,
+          :visit => visit_id,
           :user_division => user_data[:division],
           :user_id => user_data[:sf_id]
       }
@@ -491,15 +531,16 @@ class Populator
     data_array
   end
 
-  def prepare_data_for_dymanic_visit_data(table, template, records_number, parent_record_id)
+  def prepare_data_for_dymanic_visit_data(table, template, records_number, visit_id)
     data_array = []
+    z_ent = get_z_ent(table)
     dynamic_visit_data = get_dynamic_visit_data_config
 
     records_number.times do
       data_array << template % {
-          :z_ent => get_z_ent(table),
+          :z_ent => z_ent,
           :product => dynamic_visit_data[:product],
-          :visit => parent_record_id,
+          :visit => visit_id,
           :json => dynamic_visit_data[:json]
       }
     end
@@ -507,19 +548,19 @@ class Populator
   end
 
   def get_dynamic_visit_data_config
-    config = YAML::load DYNAMIC_KPI_CONFIG_FILEPATH
-    product = config['dynamic_kpi_product']
-    json = config['dynamic_kpi_json'] % {
+    config = YAML::load_file DYNAMIC_KPI_CONFIG_FILEPATH
+    dynamic_kpi_product = config['dynamic_kpi_product']
+    dynamic_kpi_json = config['dynamic_kpi_json'] % {
       :slide_id => config['dynamic_kpi_slide'],
-      :product => product
+      :product => dynamic_kpi_product
     }
 
-    {:product => product, :json => json}
+    {:product => dynamic_kpi_product, :json => dynamic_kpi_json}
   end
 
   def get_z_ent(zobject)
     object_name = zobject[1..-1]
-    $db.execute("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'").first
+    db.get_first_value("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'")
   end
 
   def generate_random_status
@@ -542,8 +583,8 @@ class Populator
     reference_ids = @db.execute("select zcontact, zorganization from zreference where zcontact in (select z_pk from zcontact where zspecialty = 'Терапевт') order by random() limit 1").first
     contact_id = reference_ids[0]
     organization_id = reference_ids[1]
-    contact_sf_id = @db.execute("select zentityid from zcontact where z_pk = #{contact}")
-    organization_sf_id = @db.execute("select zentityid from zorganization where z_pk = #{organization}")
+    contact_sf_id = @db.get_first_value("select zentityid from zcontact where z_pk = #{contact_id}")
+    organization_sf_id = @db.get_first_value("select zentityid from zorganization where z_pk = #{organization_id}")
 
     {:contact_id => contact_id, :organization_id => organization_id,
      :contact_sf_id => contact_sf_id, :organization_sf_id => organization_sf_id}
@@ -599,7 +640,7 @@ class Populator
   end
 
   def get_records_count(table)
-    db.execute("select count() from #{table}").first.to_i
+    db.get_first_value("select count() from #{table}").to_i
   end
 end
 
