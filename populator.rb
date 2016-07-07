@@ -7,7 +7,7 @@ NUMBER_CONFIG_FILEPATH = './populate_number.yml'
 DYNAMIC_KPI_CONFIG_FILEPATH = './dynamic_kpi_config.yml'
 
 INSERT_TEMPLATE = "insert into %s (%s) values (%s)" # 'insert into @table, ([@columns]) values (?,?,?)'
-UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s) and "
+UPDATE_TEMPLATE = "update %s set ZISMODIFIED = 1 where Z_PK in (%s) and ZSTATUS != 'Closed'"
 
 
 VISITS_MONTHS_INTERVAL = 6
@@ -52,10 +52,7 @@ class Populator
       populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
 
       @populate_data = populate_config.deep_merge(populate_number)['data']
-      p "Pop data: #{@populate_data}"
-
-      # populate_config.merge(populate_number){ |key, v1, v2| v1.zip(v2).map{ |h1, h2| h1.merge(h2) } }['data']
-      # merge_configs(populate_config, populate_number) # hash['data']
+      # p "Pop data: #{@populate_data}"
     else
       @populate_data
     end
