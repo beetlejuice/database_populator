@@ -242,7 +242,7 @@ class Populator
 
       data_array << template % {
           :z_ent => z_ent,
-          :brick_city => brick_data[:name],
+          :brick_city => brick_data[:city],
           :brick_id => brick_data[:sf_id],
           :name => "Generated #{time_now} organization-#{i}",
           :recordtype_id => PHARMACY_ORGANIZATION_RECORDTYPE_ID,
@@ -253,11 +253,12 @@ class Populator
   end
 
   def get_random_brick
-    brick_data = @db.execute("select zcaption, zentityid from zterritory where zsubtype = 'Brick' order by random() limit 1").first
-    brick_name = brick_data[0]
-    brick_sf_id = brick_data[1]
+    brick_data = @db.execute("select zentityid, zparentid from zterritory where zsubtype = 'Brick' order by random() limit 1").first
+    brick_sf_id = brick_data[0]
+    brick_parent_id = brick_data[1]
+    brick_city = @db.get_first_value("select zcaption from zterritory where zentityid = '#{brick_parent_id}'")
 
-    {:name => brick_name, :sf_id => brick_sf_id}
+    {:city => brick_city, :sf_id => brick_sf_id}
   end
 
   def get_random_subtype_from_recordtype(recordtype)
