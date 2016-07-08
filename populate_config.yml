@@ -55,6 +55,7 @@ data:
           ZDETAILSEQUENCE: '%{detail_sequence}'
           ZISFULLYDETAILED: 1
           ZORDERNUMBER: 0
+          ZTARGETNUMBER: 0
       - kind: dymanic_visit_data
         operation: insert
         table: ZDYNAMICVISITDATA
@@ -141,7 +142,7 @@ data:
         table: ZVISITDATA
         columns_data:
           Z_ENT: '%{z_ent}'
-          Z_OPT: 1
+          Z_OPT: 2
           ZISMODIFIED: 1
           ZWASDELETED: 0
           ZPRODUCT: '%{product}'
@@ -149,6 +150,7 @@ data:
           ZDETAILSEQUENCE: 0
           ZISFULLYDETAILED: 1
           ZORDERNUMBER: 0
+          ZTARGETNUMBER: 0
       - kind: visit_participants
         operation: insert
         table: ZVISITPARTICIPANT

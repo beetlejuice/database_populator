@@ -117,7 +117,7 @@ class Populator
   def get_random_record_ids(table, quantity)
     existing_records_count = get_records_count table
     quantity = (quantity <= existing_records_count) ? quantity : existing_records_count
-    record_ids = @db.execute("select Z_PK from #{table} order by random() limit #{quantity}")
+    record_ids = @db.execute("select z_pk from #{table} order by random() limit #{quantity}")
     record_ids.flatten
   end
 
@@ -437,7 +437,7 @@ class Populator
   def prepare_data_for_medical_visit_data(table, template, records_number, visit_id)
     data_array = []
     # z_ent = get_z_ent(table)
-    z_ent = get_z_ent('VisitProductData') # TODO: dirty hack
+    z_ent = get_z_ent('ZVISITPRODUCTDATA') # TODO: dirty hack
 
     records_number.times do |i|
       data_array << template % {
@@ -453,7 +453,7 @@ class Populator
   def prepare_data_for_pharmacy_visit_data(table, template, records_number, visit_id)
     data_array = []
     # z_ent = get_z_ent(table)
-    z_ent = get_z_ent('VisitProductData') # TODO: dirty hack
+    z_ent = get_z_ent('ZVISITPRODUCTDATA') # TODO: dirty hack
 
     records_number.times do |i|
       data_array << template % {
