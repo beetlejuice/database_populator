@@ -78,7 +78,7 @@ data:
           ZPRODUCT: '%{product}' # TODO: sync it with VisitData
           ZVISIT: '%{visit}'
           ZPOTENTIAL: 20
-          ZNAME: Тестовая патология
+          ZNAME: '%{name}'
           ZSTATUS: Active
           ZUSERDIVISION: '%{user_division}'
           ZUSERID: '%{user_id}'

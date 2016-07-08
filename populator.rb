@@ -59,8 +59,6 @@ class Populator
       populate_number = YAML::load_file NUMBER_CONFIG_FILEPATH
 
       @populate_data = populate_config.deep_merge(populate_number)['data']
-      p @populate_data
-      @populate_data
     else
       @populate_data
     end
@@ -86,6 +84,7 @@ class Populator
     records_data.each do |record_data|
       record_data_array = record_data.split(VALUES_DIVIDER)
       request.execute *record_data_array
+      increment_z_max(table)
 
       related_objects = object['related_objects']
       unless related_objects.nil?
@@ -254,7 +253,7 @@ class Populator
   end
 
   def get_random_brick
-    brick_data = @db.execute("select ZCAPTION, ZENTITYID from ZACCOUNT where ZSUBTYPE = 'Brick' order by random() limit 1").first
+    brick_data = @db.execute("select zcaption, zentityid from zterritory where zsubtype = 'Brick' order by random() limit 1").first
     brick_name = brick_data[0]
     brick_sf_id = brick_data[1]
 
@@ -437,7 +436,8 @@ class Populator
 
   def prepare_data_for_medical_visit_data(table, template, records_number, visit_id)
     data_array = []
-    z_ent = get_z_ent(table)
+    # z_ent = get_z_ent(table)
+    z_ent = get_z_ent('VisitProductData') # TODO: dirty hack
 
     records_number.times do |i|
       data_array << template % {
@@ -452,7 +452,8 @@ class Populator
 
   def prepare_data_for_pharmacy_visit_data(table, template, records_number, visit_id)
     data_array = []
-    z_ent = get_z_ent(table)
+    # z_ent = get_z_ent(table)
+    z_ent = get_z_ent('VisitProductData') # TODO: dirty hack
 
     records_number.times do |i|
       data_array << template % {
@@ -521,7 +522,7 @@ class Populator
     user_data = get_user
     visit_info = get_visit_info visit_id
 
-    records_number.times do
+    records_number.times do |i|
       product_data = get_random_product
 
       data_array << template % {
@@ -529,6 +530,7 @@ class Populator
           :contact => visit_info[:contact_id],
           :product => product_data[:id],
           :visit => visit_id,
+          :name => "Тестовая патология-#{i}",
           :user_division => user_data[:division],
           :user_id => user_data[:sf_id]
       }
@@ -564,12 +566,12 @@ class Populator
   end
 
   def get_z_ent(zobject)
-    object_name = zobject[1..-1]
+    object_name = zobject[1..-1] # ZVISIT => VISIT
     db.get_first_value("select z_ent from z_primarykey where upper(z_name) = '#{object_name}'")
   end
 
   def generate_random_status
-    %w(Open Processing Completed).sample
+    %w(Processing Completed).sample
   end
 
   def generate_random_time
@@ -647,8 +649,10 @@ class Populator
   def get_records_count(table)
     db.get_first_value("select count() from #{table}").to_i
   end
-end
 
-# def fix_coredata # call after all modifications
-#   # set z_max for all objects
-# end
+  def increment_z_max(table_name)
+    new_value = @db.get_first_value("select z_pk from #{table_name} order by z_pk desc").to_i
+    object_name = table_name[1..-1]
+    @db.execute("update z_primarykey set z_max = #{new_value} where upper(z_name) = '#{object_name}'")
+  end
+end

@@ -5,7 +5,7 @@ data:
       - kind: medical_visit_data
         number: 5
       - kind: dymanic_visit_data
-        number: 5
+        number: 0
       - kind: pathologies
         number: 5
       - kind: pharma_evaluations
@@ -30,7 +30,7 @@ data:
     number: 10
     related_objects:
       - kind: references
-        number: 5
+        number: 1
   - kind: organizations
     number: 10
     related_objects:
