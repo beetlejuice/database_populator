@@ -32,12 +32,7 @@ class Populator
   def populate
     populate_data.each do |object|
       if object['number'].to_i > 0
-        message_objects = [object['kind']]
-
-        related_objects = object['related_objects'] || []
-        message_objects += related_objects.map{ |rel_obj| rel_obj['kind'] }
-
-        message_objects_str = message_objects.join(", ")
+        message_objects_str = prepare_log_message object
 
         case object['operation']
           when 'insert'
@@ -66,9 +61,13 @@ class Populator
 
   private
 
-  def merge_configs *configs
-    # TODO: implement
-    # result_hash['data']
+  def prepare_log_message(object_data)
+    message_objects = [object_data['kind']]
+
+    related_objects = object_data['related_objects'] || []
+    message_objects += related_objects.map{ |rel_obj| rel_obj['kind'] }
+
+    message_objects.join(", ")
   end
 
   def insert_object(object, parent_id = nil)
