@@ -1,13 +1,42 @@
 data:
   - kind: medical_visits
-    number: 1
+    number: 10
     related_objects:
       - kind: medical_visit_data
         number: 5
+      - kind: dymanic_visit_data
+        number: 0
+      - kind: pathologies
+        number: 5
+      - kind: pharma_evaluations
+        number: 5
   - kind: pharmacy_visits
-    number: 1
+    number: 10
     related_objects:
-      - kind: pharmacy_visits_data
+      - kind: pharmacy_visit_data
         number: 5
       - kind: visit_participants
-        number: 4
+        number: 3
+  - kind: application_events
+    number: 5
+    related_objects:
+      - kind: application_event_data
+        number: 5
+      - kind: application_event_participants
+        number: 10
+  - kind: target_frequencies
+    number: 10
+  - kind: contacts
+    number: 10
+    related_objects:
+      - kind: references
+        number: 1
+  - kind: organizations
+    number: 10
+    related_objects:
+      - kind: organization_additional_info
+        number: 1
+  - kind: sales
+    number: 10
+  - kind: medical_info_requests
+    number: 10
